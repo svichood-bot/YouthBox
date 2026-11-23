@@ -16,10 +16,10 @@
 :root{--bg:#ffc4dd;--ink:#3b1228;--card:#fff4f9;--card2:#ffe0ee;--line:#f08ab5;--acc:#ff5aa5;--accd:#c01868;--mint:#6ee7c8;--sun:#ffd166;--sky:#2a8fd6;--mut:#8a3a63}
 *{box-sizing:border-box}
 body{margin:0;min-height:100vh;padding-bottom:130px;color:var(--ink);font-family:"Fredoka","Arial Rounded MT Bold",ui-rounded,system-ui,sans-serif;font-size:17px;background:radial-gradient(900px 500px at 12% -10%,#ffe6f1 0,transparent 62%),radial-gradient(#ffb0d0 1.6px,transparent 1.8px) 0 0/24px 24px,var(--bg)}
-header{display:flex;justify-content:space-between;align-items:center;padding:14px 20px}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:14px 20px}
 .logo{display:flex;align-items:center;gap:10px}
 .logo svg{width:54px;height:54px}
-h1{margin:0;font-size:2rem;font-weight:700;letter-spacing:-.01em}
+h1{margin:0;white-space:nowrap;font-size:2rem;font-weight:700;letter-spacing:-.01em}
 h1 span{color:#d81b72}
 button{font:inherit;color:inherit;cursor:pointer}
 button:focus-visible,input:focus-visible{outline:3px solid var(--sky);outline-offset:2px}
@@ -77,11 +77,11 @@ input{font:inherit;width:100%;padding:10px 12px;border:2px solid var(--line);bor
 #plist li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
 #plist button{background:var(--card2);border:0;border-radius:8px;padding:3px 12px}
 hr{border:0;border-top:2px solid var(--card2);margin:16px 0}
-@media(max-width:480px){#ctl{gap:2px}#ctl button{width:38px;height:38px}#barArt{width:44px;height:44px}#ctl button.big{width:52px;height:52px}}
+@media(max-width:480px){h1{font-size:1.6rem}.logo svg{width:44px;height:44px}.chip{padding:5px 12px;font-size:.95rem}#ctl{gap:2px}#ctl button{width:38px;height:38px}#barArt{width:44px;height:44px}#ctl button.big{width:52px;height:52px}}
 h3.grp{grid-column:1/-1;margin:12px 0 0;font-size:1.15rem}
 .tile.bad{opacity:.55}
 .tile.bad .art::after{content:'🚫';position:absolute;inset:0;display:grid;place-items:center;font-size:2.4rem;background:rgba(255,255,255,.5)}
-.hbtns{display:flex;gap:8px}
+.hbtns{display:flex;gap:8px;margin-left:auto}
 .how{margin:0 0 12px;padding-left:22px;line-height:1.5}
 .how li{margin:6px 0}
 details{margin:6px 0 12px;font-size:.95rem}
@@ -328,7 +328,7 @@ function onState(e){
   }
 }
 function onErr(e){
-  if(importing) return;
+  if(importing){importErr=e.data; return;}
   const c=e.data;
   if(c===153||c===152){$('now').textContent='Grown-up: open this from a web address, not a file.'; return;}
   const it=S.items[cur];
@@ -383,7 +383,12 @@ function renderParent(){
       else if(i<cur) cur--;
       render(); renderParent();
     };
-    li.append(t,b); ul.append(li);
+    if(it.type==='list'){
+      const sb=document.createElement('button'); sb.textContent='Show songs';
+      sb.onclick=()=>importList(it.id,it.name==='Playlist'?'':it.name);
+      li.append(t,sb,b);
+    } else li.append(t,b);
+    ul.append(li);
   });
   $('lim').value=S.limit;
   $('usedMsg').textContent='Listened today: '+Math.floor(used()/60)+' min';
@@ -411,22 +416,39 @@ async function ytTitle(u){
   try{const r=await fetch('https://www.youtube.com/oembed?format=json&url='+encodeURIComponent(u)); return (await r.json()).title||'';}
   catch(e){return '';}
 }
+let importErr=0;
 async function importList(l,label){
   const m=$('addMsg');
-  if(!pReady){m.textContent='The player is still loading. Try again in a few seconds.'; return false;}
-  importing=true; stopTick(); cur=-1; resetBar(); render();
-  m.textContent='Reading the playlist…';
+  if(!pReady){m.textContent='The player hasn’t loaded yet. Check you’re online and that YouthBox is open from its web address, then try again.'; return false;}
+  importing=true; importErr=0; stopTick(); cur=-1; resetBar(); render();
   const peek=()=>{try{return player.getPlaylist()||[];}catch(e){return [];}};
   const before=JSON.stringify(peek());
-  player.cuePlaylist({list:l,listType:'playlist'});
+  const wait=async sec=>{
+    for(let t=0;t<sec*2&&!importErr;t++){
+      await new Promise(r=>setTimeout(r,500));
+      const p=peek(); if(p.length&&JSON.stringify(p)!==before) return true;
+    }
+    return false;
+  };
   let ids=[];
-  for(let t=0;t<20;t++){
-    await new Promise(r=>setTimeout(r,500));
-    ids=peek();
-    if(ids.length&&JSON.stringify(ids)!==before) break;
+  m.textContent='Reading the playlist…';
+  player.cuePlaylist({list:l,listType:'playlist'});
+  if(await wait(8)) ids=peek();
+  if(!ids.length&&!importErr){
+    m.textContent='Still reading… trying another way.';
+    try{player.mute(); player.loadPlaylist({list:l,listType:'playlist'});}catch(e){}
+    if(await wait(10)) ids=peek();
+    try{player.pauseVideo(); player.unMute();}catch(e){}
   }
-  importing=false;
-  if(!ids.length){m.textContent='Couldn’t read that playlist. It needs to be public or unlisted, and this page must be open from a web address.'; return false;}
+  if(!ids.length&&!importErr) ids=peek();
+  const code=importErr; importing=false;
+  if(!ids.length){
+    m.textContent=(code===153||code===152)?'Open YouthBox from its web address (not as a file) so YouTube will work.'
+      :code===100?'YouTube says that playlist isn’t there. It may be private or deleted. Set it to Unlisted or Public and try again.'
+      :(code===101||code===150)?'YouTube won’t let that playlist play outside YouTube. Try another playlist, or add its songs one at a time.'
+      :'Couldn’t read that playlist'+(code?' (YouTube error '+code+')':'')+'. It needs to be public or unlisted. Mixes and auto-made playlists don’t work.';
+    return false;
+  }
   const have=new Set(S.items.map(x=>x.id));
   const fresh=ids.filter(id=>!have.has(id));
   const group=label||(await ytTitle('https://www.youtube.com/playlist?list='+l))||'Playlist';
@@ -436,6 +458,7 @@ async function importList(l,label){
     S.items.push(...res); n+=res.length;
     m.textContent='Importing… '+n+' of '+fresh.length;
   }
+  S.items=S.items.filter(x=>!(x.type==='list'&&x.id===l));
   save(); resetQ(); render(); renderParent();
   const dup=ids.length-fresh.length;
   m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+'.';

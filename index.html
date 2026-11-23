@@ -5,6 +5,11 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Crect%20x='4'%20y='6'%20width='40'%20height='38'%20rx='12'%20fill='%23ffd166'%20stroke='%233b1228'%20stroke-width='2.4'%20transform='rotate(-4%2024%2025)'/%3E%0A%3Cg%20transform='rotate(-4%2024%2025)'%3E%0A%3Ccircle%20cx='15'%20cy='24'%20r='3.2'%20fill='%233b1228'/%3E%3Ccircle%20cx='14'%20cy='23'%20r='1'%20fill='%23fff'/%3E%0A%3Cellipse%20cx='31'%20cy='25'%20rx='3.6'%20ry='3'%20fill='%233b1228'%20transform='rotate(-20%2031%2025)'/%3E%0A%3Cpath%20d='M34.2%2024V11c.4%204%203.6%204.4%205.2%207.2'%20fill='none'%20stroke='%233b1228'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%0A%3Cpath%20d='M12%2031c3%208%2021%208%2024%200'%20fill='none'%20stroke='%233b1228'%20stroke-width='2.6'%20stroke-linecap='round'/%3E%0A%3Ccircle%20cx='9'%20cy='29'%20r='2.3'%20fill='%23ff7eb6'%20opacity='.8'/%3E%3Ccircle%20cx='39'%20cy='29'%20r='2.3'%20fill='%23ff7eb6'%20opacity='.8'/%3E%0A%3C/g%3E%3C/svg%3E">
 <meta name="theme-color" content="#ffc4dd">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="YouthBox">
 <title>YouthBox</title>
 <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -397,6 +402,7 @@ setInterval(()=>{
   try{if(!pReady) return; const d=player.getDuration(); $('fill').style.width=d?(player.getCurrentTime()/d*100)+'%':'0';}catch(e){}
 },500);
 paintShuf(); render(); setIcon(false);
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 if(limitHit()) showBreak();
 </script>
 </body>

@@ -26,7 +26,7 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--sky);outline-of
 .chip{background:rgba(255,255,255,.6);border:2px solid var(--line);border-radius:999px;padding:6px 16px;color:var(--ink)}
 .chip:hover{background:#fff}
 main{padding:0 20px;max-width:1100px;margin:0 auto}
-#screen{position:relative;aspect-ratio:16/9;width:min(100%,640px);margin:4px auto 28px;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(150,30,90,.28),0 0 0 5px #fff}
+#screen{position:relative;aspect-ratio:16/9;width:min(100%,640px);min-height:200px;margin:4px auto 16px;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(150,30,90,.28),0 0 0 5px #fff}
 #screen iframe{position:absolute;inset:0;width:100%;height:100%}
 #shield{position:absolute;inset:0;z-index:2;cursor:pointer;clip-path:var(--win)}
 #screen{--win:polygon(0 0,100% 0,100% calc(100% - 64px),calc(100% - 200px) calc(100% - 64px),calc(100% - 200px) 100%,0 100%)}
@@ -123,6 +123,33 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
 .qrow span{flex:1;min-width:0;line-height:1.2}
 .qrow button{width:40px;height:40px;border-radius:50%;border:0;background:var(--card2);font-size:1.05rem;padding:0}
 #qbtn{font-size:1.3rem}
+#navbar{position:sticky;top:0;z-index:3;display:flex;align-items:center;gap:12px;padding:8px 0 10px;margin-bottom:6px;background:linear-gradient(var(--bg) 78%,transparent)}
+#navbar[hidden]{display:none}
+#navbar span{font-weight:600;font-size:1.15rem}
+#sheet{position:fixed;left:0;right:0;top:0;bottom:var(--barh,84px);z-index:4;display:flex;flex-direction:column;background:var(--bg);transform:translateY(calc(100% + var(--barh,84px)));transition:transform .28s ease;pointer-events:none}
+#sheet.open{transform:none;pointer-events:auto}
+#shHead{position:relative;display:flex;justify-content:center;align-items:center;padding:12px 16px 6px}
+.grab{width:46px;height:5px;border-radius:3px;background:var(--line)}
+#shX{position:absolute;right:14px;top:6px}
+#shBody{flex:1;overflow-y:auto;padding:6px 20px 24px;max-width:700px;width:100%;margin:0 auto}
+#srch{margin:0 0 12px;border-radius:999px;padding:11px 18px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(var(--barh,84px) + 14px);z-index:6;max-width:90vw;background:var(--ink);color:#fff;padding:10px 18px;border-radius:999px;font-weight:600;text-align:center}
+#toast[hidden]{display:none}
+#askL{list-style:none;margin:8px 0 0;padding:0}
+#askL li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
+#askL li>span{flex:1;min-width:0}
+#askL a{color:var(--accd)}
+#askL button.sm{background:var(--card2);border:0;border-radius:8px;padding:3px 12px}
+.mrow{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.mrow span{flex:1;min-width:0;line-height:1.2}
+#reqL{list-style:none;margin:8px 0 6px;padding:0}
+#reqL li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
+#reqL li>span{flex:1;min-width:0}
+#reqL a{color:var(--accd)}
+#reqL button.sm{background:var(--card2);border:0;border-radius:8px;padding:3px 12px}
+#pp.nudge{animation:nud 1s ease-in-out infinite}
+@keyframes nud{50%{transform:scale(1.14)}}
+@media(prefers-reduced-motion:reduce){#sheet{transition:none}#pp.nudge{animation:none}}
 </style>
 </head>
 <body>
@@ -143,13 +170,24 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <div class="hbtns"><button id="hp" class="chip">Help</button><button id="gu" class="chip">Grown-ups</button></div>
 </header>
 <main>
-  <div id="screen"><div id="yt"></div><div id="cover" aria-hidden="true"><div class="z">🎵</div><p id="coverT"></p></div><div id="shield" title="Play or pause"></div></div>
   <h2 class="sec">What shall we play? 🎶</h2>
+  <input id="srch" type="search" placeholder="🔍 Find a song" aria-label="Find a song" autocomplete="off">
+  <div id="navbar" hidden></div>
   <div id="tabs" class="tabs"></div>
   <div id="tools" class="tools"></div>
   <section id="grid" aria-label="Music"></section>
+  <div id="more"></div>
   <p id="empty" hidden>No music here yet. Ask a grown-up to add some.</p>
 </main>
+<div id="toast" hidden></div>
+<div id="sheet" aria-hidden="true">
+  <div id="shHead"><span class="grab"></span><button id="shX" class="chip" aria-label="Close player">⌄ Close</button></div>
+  <div id="shBody">
+    <div id="screen"><iframe id="yt" title="Music player" allow="autoplay; encrypted-media; picture-in-picture"></iframe><div id="cover" aria-hidden="true"><div class="z">🎵</div><p id="coverT"></p></div><div id="shield" title="Play or pause"></div></div>
+    <h3 class="grp" style="margin:4px 0 2px">Up next 🎧</h3>
+    <div id="qList"></div>
+  </div>
+</div>
 <div id="bar">
   <div id="prog"><div id="fill"></div></div>
   <div id="barIn">
@@ -176,9 +214,11 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <h2>How YouthBox works 🎶</h2>
   <ol class="how">
     <li><b>Tap a picture</b> to play that song.</li>
-    <li><b>The smiley button</b> plays and pauses. You can tap the video too!</li>
+    <li><b>The smiley button</b> plays and pauses.</li>
+    <li><b>Swipe the bottom bar up</b> (or tap the ☰) to see what’s coming next. Swipe it down to close.</li>
     <li><b>The arrows</b> jump to the next or last song.</li>
     <li><b>Shuffle</b> mixes up the order. Tap it again to turn it off.</li>
+    <li>Use <b>🔍 Find a song</b> to look for a song. Tap <b>🌍</b> to see more songs you can ask for, or <b>🙋</b> to ask a grown-up to add one.</li>
     <li><b>Bouncy pink bars</b> show which song is playing.</li>
     <li>Tap the <b>🤍</b> on a song to keep it in <b>❤️ Favourites</b>.</li>
     <li>Tap <b>➕ New list</b> to make your own playlist from the songs here.</li>
@@ -206,7 +246,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
       <li><b>YouthBox on the Home Screen:</b> it keeps its own storage and is usually not signed in. Open YouthBox in the browser itself instead.</li>
     </ul>
     <p><b>Good to know:</b> this signs the whole browser in to your account, so anyone using it can reach your YouTube account. Use a device you control, or a separate browser profile just for YouthBox. On a Premium family plan you can sign in with a family member’s account instead of your own. This can’t be guaranteed on every device, and ads with a countdown can’t be skipped until it ends.</p>
-    <p><b>Skip button:</b> the pink picture covers the video (and any ad). YouTube’s Skip button shows in the small strip at the bottom-right. To see an ad yourself, open <b>Grown-ups</b> and turn off <b>Hide the video</b>.</p>
+    <p><b>Skip button:</b> swipe the bottom bar up to open the player. The pink picture covers the video (and any ad). YouTube’s Skip button shows in the small strip at the bottom-right. To see an ad yourself, open <b>Grown-ups</b> and turn off <b>Hide the video</b>.</p>
   </details>
   <div class="row"><button id="helpX" class="btn">Got it!</button></div>
 </dialog>
@@ -266,6 +306,25 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <div class="row"><button id="chk" class="btn alt">Check songs now</button><button id="subAll" class="btn alt">Find replacements</button><button id="syncNow" class="btn alt">Refresh playlists</button></div>
   <p class="msg">Songs that can’t play are hidden from the kids automatically. Checking and finding replacements needs the YouTube key.</p>
   <hr>
+  <h2>Song requests 🙋</h2>
+  <ul id="askL"></ul>
+  <ul id="reqL"></ul>
+  <p id="reqMsg" class="msg"></p>
+  <hr>
+  <h2>Email alerts 📧</h2>
+  <p class="msg">When she asks for a song, you get an email with <b>Approve</b> and <b>No</b> links. Tap one, even when you’re out, and her app picks it up.</p>
+  <details><summary>How to set it up (free, no app)</summary>
+    <ol class="how">
+      <li>On your phone, go to <b>web3forms.com</b>, enter your email and tap <b>Create Access Key</b>.</li>
+      <li>Check your email for the key and copy it.</li>
+      <li>Paste it below, tap <b>Save</b>, then <b>Send test email</b>.</li>
+    </ol>
+    <p class="msg">Requests pass through Web3Forms (to send the email) and ntfy.sh (to carry your answer back), so the song name leaves this device. Free limit: about 250 emails a month.</p>
+  </details>
+  <input id="mailKey" type="password" autocomplete="off" placeholder="Paste your Web3Forms key" aria-label="Web3Forms key">
+  <div class="row"><button id="ntSet" class="btn alt">Save</button><button id="ntTest" class="btn alt">Send test email</button><button id="ntOff" class="btn alt">Turn off</button></div>
+  <p id="ntMsg" class="msg"></p>
+  <hr>
   <h2>Kids’ lists</h2>
   <ul id="kpl"></ul>
   <hr>
@@ -318,11 +377,12 @@ const $=id=>document.getElementById(id);
   };
   addEventListener('popstate',()=>{
     if(ignore>0){ignore--; return;}
-    const d=stack[stack.length-1]; if(d){viaBack=true; d.close();}
+    const d=stack[stack.length-1]; if(d){viaBack=true; d.close(); return;}
+    if(window.navPop) window.navPop();
   });
 })();
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
-const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0,hideVid:true};
+const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0,hideVid:true,req:[],ask:[],ntfy:{ask:'',ans:'',since:''},mail:{key:''}};
 let S=load();
 function load(){try{return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return Object.assign({},DEF)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -350,7 +410,9 @@ function parse(u){
 /* ---------- kid screen ---------- */
 let cur=-1, errs=0;
 let view='home';
-const inView=x=>view==='all'||view==='home'||view==='q'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
+let qs='';
+const nameHas=x=>{const n=x.name.toLowerCase(); return qs.split(' ').filter(Boolean).every(w=>n.includes(w));};
+const inView=x=>qs?(x.type==='song'&&nameHas(x)):view==='all'||view==='home'||view==='q'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
 const ok=i=>{const x=S.items[i]; return !!x&&!x.bad&&inView(x);};
 const vis=()=>{
   const r=S.items.map((x,i)=>i).filter(ok), sv=S.sort||'added', kl=S.kp.find(p=>p.id===view);
@@ -400,7 +462,7 @@ function buildQ(i){
   S.q=r.map(x=>S.items[x].id); save();
 }
 function playFrom(i){play(i); buildQ(i); if(view==='q') render();}
-$('qbtn').onclick=()=>{view=view==='q'?'home':'q'; render(); window.scrollTo({top:0,behavior:'smooth'});};
+$('qbtn').onclick=()=>openSheet();
 function popQ(){
   while(S.q.length){
     const id=S.q.shift(), i=S.items.findIndex(x=>x.id===id&&!x.bad);
@@ -410,8 +472,8 @@ function popQ(){
 }
 function renderTabs(){
   const t=$('tabs'); t.textContent='';
-  const add=(label,v,fn)=>{const b=document.createElement('button'); b.className='chip'+(v===view?' sel':''); b.textContent=label; b.onclick=fn||(()=>{view=v; resetQ(); render();}); t.append(b);};
-  add((view.startsWith('g:')||view==='q')?'← Back':'📀 Playlists','home'); add('🎶 All songs','all'); add('❤️ Favourites','fav');
+  const add=(label,v,fn)=>{const b=document.createElement('button'); b.className='chip'+(v===view?' sel':''); b.textContent=label; b.onclick=fn||(()=>nav(v)); t.append(b);};
+  add('📀 Playlists','home'); add('🎶 All songs','all'); add('❤️ Favourites','fav');
   S.kp.forEach(p=>add(p.icon+' '+p.name,p.id));
   add('➕ New list','',openNew);
   if(S.kp.some(p=>p.id===view)) add('✏️ Edit list','',openPick);
@@ -420,10 +482,10 @@ function toggleFav(id){S.favs=S.favs.includes(id)?S.favs.filter(x=>x!==id):[...S
 function render(){
   if(view.startsWith('g:')){ if(!S.items.some(x=>!x.bad&&(x.group||'Songs')===view.slice(2))) view='home'; }
   else if(!['home','all','fav','q'].includes(view)&&!S.kp.some(p=>p.id===view)) view='home';
-  renderTabs();
+  renderTabs(); renderNav(); $('tabs').style.display=qs?'none':'';
   const g=$('grid'); g.textContent=''; $('tools').textContent='';
   if(view==='q'){renderQueue(g); $('empty').hidden=true; return;}
-  if(view==='home'&&S.items.some(x=>x.group&&!x.bad)){
+  if(!qs&&view==='home'&&S.items.some(x=>x.group&&!x.bad)){
     const gs=new Map();
     S.items.forEach(x=>{
       if(x.bad||x.type!=='song'||!x.group) return;
@@ -434,7 +496,7 @@ function render(){
       const a=document.createElement('div'); a.className='art';
       const im=new Image(); im.alt=''; im.src='https://i.ytimg.com/vi/'+o.id+'/hqdefault.jpg'; a.append(im);
       const t=document.createElement('span'); t.textContent=o.n+' · '+o.c+(o.c===1?' song':' songs');
-      b.append(a,t); b.onclick=()=>{view='g:'+o.n; resetQ(); render();}; g.append(b);
+      b.append(a,t); b.onclick=()=>nav('g:'+o.n); g.append(b);
     });
     $('empty').hidden=gs.size>0; $('empty').textContent='No music here yet. Ask a grown-up to add some.';
     return;
@@ -466,8 +528,12 @@ function render(){
     }
     g.append(cell);
   });
+  if(qs){
+    if(S.apiKey){const mb=mk('🌍 Look for more songs',()=>{moreFor=''; moreSearch(qs);},'btn'); mb.style.gridColumn='1/-1'; g.append(mb);}
+    const rb=mk('🙋 Can’t find it? Ask a grown-up to add it',()=>askAdd(qs),'btn alt'); rb.style.gridColumn='1/-1'; g.append(rb);
+  }
   const e=$('empty'); e.hidden=shown>0;
-  e.textContent=view==='fav'?'No favourites yet. Tap the 🤍 on a song!':view!=='all'?'This list is empty. Tap ✏️ Edit list to add songs.':'No music here yet. Ask a grown-up to add some.';
+  if(qs) e.textContent='No songs like “'+qs+'” here yet.'; else e.textContent=view==='fav'?'No favourites yet. Tap the 🤍 on a song!':view!=='all'?'This list is empty. Tap ✏️ Edit list to add songs.':'No music here yet. Ask a grown-up to add some.';
 }
 function setBarArt(it,i){
   const a=$('barArt'); a.style.cssText=''; a.textContent='';
@@ -483,10 +549,12 @@ function setIcon(playing){
 /* ---------- player ---------- */
 let player=null, pReady=false, pending=null;
 const s=document.createElement('script'); s.src='https://www.youtube.com/iframe_api'; document.head.append(s);
+(function(){
+  const o=location.protocol.startsWith('http')?'&origin='+encodeURIComponent(location.origin):'';
+  $('yt').src='https://www.youtube.com/embed/jNQXAC9IVRw?enablejsapi=1&playsinline=1&controls=0&disablekb=1&fs=0&rel=0&modestbranding=1&iv_load_policy=3'+o;
+})();
 window.onYouTubeIframeAPIReady=()=>{
   player=new YT.Player('yt',{
-    width:'100%',height:'100%',
-    playerVars:{rel:0,modestbranding:1,controls:0,disablekb:1,fs:0,iv_load_policy:3,playsinline:1},
     events:{
       onReady:()=>{pReady=true; if(pending!==null){const p=pending; pending=null; play(p);}},
       onStateChange:onState, onError:onErr
@@ -505,7 +573,8 @@ function play(i,fromPrev){
   if(it.type==='list'){
     player.loadPlaylist({list:it.id,listType:'playlist',index:0});
     if(S.shuffle) setTimeout(()=>{try{player.setShuffle(true);}catch(e){}},1200);
-  } else player.loadVideoById(it.id);
+  } else {player.loadVideoById(it.id); try{player.playVideo();}catch(e){}}
+  ensurePlay();
 }
 function inList(){const it=S.items[cur]; return it&&it.type==='list';}
 function nextIdx(){
@@ -544,7 +613,7 @@ $('shuf').onclick=()=>{
 $('pp').onclick=toggle; $('shield').onclick=toggle; $('next').onclick=nextBtn; $('prev').onclick=prevBtn;
 
 function onState(e){
-  const playing=e.data===1; setIcon(playing); document.body.classList.toggle('playing',playing);
+  const playing=e.data===1; setIcon(playing); document.body.classList.toggle('playing',playing); if(playing) $('pp').classList.remove('nudge');
   if(playing){errs=0; startTick();} else stopTick();
   if(e.data===0){
     if(inList()){try{if(player.getPlaylistIndex()<player.getPlaylist().length-1) return;}catch(x){}}
@@ -553,6 +622,7 @@ function onState(e){
 }
 function onErr(e){
   if(importing){importErr=e.data; return;}
+  if(cur<0) return;
   const c=e.data;
   if(c===153||c===152){$('now').textContent='Grown-up: open this from a web address, not a file.'; return;}
   const it=S.items[cur];
@@ -845,7 +915,7 @@ $('kpOk').onclick=()=>{
   const p={id:'k'+Date.now().toString(36),name:$('kpName').value.trim().slice(0,24)||'My list',icon:icoSel,songs:[]};
   S.kp.push(p);
   if(pendingSong){p.songs.push(pendingSong); pendingSong=null; save(); $('kpD').close(); render(); return;}
-  save(); view=p.id; resetQ(); $('kpD').close(); render(); openPick();
+  save(); $('kpD').close(); setTimeout(()=>{nav(p.id); openPick();},160);
 };
 $('kpNo').onclick=()=>$('kpD').close();
 function openPick(tg){
@@ -958,11 +1028,230 @@ setInterval(()=>{
 },500);
 function paintVid(){document.body.classList.toggle('hidevid',S.hideVid!==false); $('hideVid').checked=S.hideVid!==false;}
 $('hideVid').onchange=()=>{S.hideVid=$('hideVid').checked; save(); paintVid();};
+/* ---------- screens, back button, swipe-up player ---------- */
+let inHist=false, shOpen=false, pt=null;
+function viewTitle(){
+  if(view.startsWith('g:')) return view.slice(2);
+  if(view==='all') return '🎶 All songs';
+  if(view==='fav') return '❤️ Favourites';
+  const p=S.kp.find(x=>x.id===view); return p?p.icon+' '+p.name:'';
+}
+function renderNav(){
+  const nb=$('navbar'); nb.hidden=view==='home'||!!qs; nb.textContent='';
+  if(view==='home') return;
+  const t=document.createElement('span'); t.textContent=viewTitle();
+  nb.append(mk('← Home',()=>nav('home'),'chip'),t);
+}
+function setView(v){view=v; resetQ(); render(); window.scrollTo(0,0);}
+function nav(v){
+  if(v===view) return;
+  if(v==='home'){ if(inHist) history.back(); else setView('home'); return; }
+  if(view==='home'&&!inHist){history.pushState({v:1},''); inHist=true;}
+  setView(v);
+}
+function openSheet(){
+  if(shOpen) return; shOpen=true;
+  $('sheet').classList.add('open'); $('sheet').setAttribute('aria-hidden','false');
+  history.pushState({sh:1},''); renderQ();
+}
+function paintSheetClosed(){shOpen=false; $('sheet').classList.remove('open'); $('sheet').setAttribute('aria-hidden','true');}
+function closeSheet(){if(shOpen) history.back();}
+window.navPop=()=>{
+  if(shOpen){paintSheetClosed(); return;}
+  if(view!=='home'){inHist=false; setView('home');}
+};
+function renderQ(){const w=$('qList'); w.textContent=''; renderQueue(w);}
+function ensurePlay(){
+  clearTimeout(pt);
+  pt=setTimeout(()=>{
+    try{const st=player.getPlayerState(); if(st!==1&&st!==3) player.playVideo();}catch(e){}
+    pt=setTimeout(()=>{
+      try{const st=player.getPlayerState(); if(st!==1&&st!==3&&cur>=0&&!limitHit()) $('pp').classList.add('nudge');}catch(e){}
+    },1500);
+  },700);
+}
+(function(){
+  const bar=$('bar'), sh=$('sheet'), body=$('shBody'); let y0=null, x0=0, can=false;
+  const setH=()=>document.documentElement.style.setProperty('--barh',bar.offsetHeight+'px');
+  setH(); if(window.ResizeObserver) new ResizeObserver(setH).observe(bar); addEventListener('resize',setH);
+  bar.addEventListener('touchstart',e=>{y0=e.touches[0].clientY; x0=e.touches[0].clientX;},{passive:true});
+  bar.addEventListener('touchend',e=>{
+    if(y0===null) return; const t=e.changedTouches[0], dy=t.clientY-y0, dx=t.clientX-x0; y0=null;
+    if(dy<-35&&Math.abs(dx)<70) openSheet();
+  },{passive:true});
+  $('barArt').onclick=openSheet; $('now').onclick=openSheet;
+  sh.addEventListener('touchstart',e=>{y0=e.touches[0].clientY; x0=e.touches[0].clientX; can=body.scrollTop<=0||!!e.target.closest('#shHead');},{passive:true});
+  sh.addEventListener('touchend',e=>{
+    if(y0===null) return; const t=e.changedTouches[0], dy=t.clientY-y0, dx=t.clientX-x0; y0=null;
+    if(can&&dy>70&&Math.abs(dx)<80) closeSheet();
+  },{passive:true});
+  $('shX').onclick=closeSheet;
+})();
+{const _r=render; render=function(){_r(); if(shOpen) renderQ();};}
+/* ---------- search and song requests ---------- */
+const reqRes={};
+function toast(m){const t=$('toast'); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>{t.hidden=true;},3200);}
+$('srch').oninput=()=>{qs=$('srch').value.trim().toLowerCase(); resetQ(); render(); renderMore();};
+$('srch').onkeydown=e=>{if(e.key==='Enter') e.target.blur();};
+function askAdd(t){
+  t=t.trim().slice(0,60); if(!t) return;
+  if(!S.req.includes(t)){S.req.push(t); if(S.req.length>30) S.req.shift(); save();}
+  toast('Asked a grown-up to add “'+t+'” 🙋');
+  push({title:'🙋 Song request',message:'“'+t+'” isn’t in YouthBox yet',url:'https://music.youtube.com/search?q='+encodeURIComponent(t)});
+}
+function renderReq(){
+  const ul=$('reqL'); ul.textContent='';
+  if(!S.req.length){const li=document.createElement('li'); li.textContent='No requests yet.'; ul.append(li); return;}
+  S.req.forEach((t,i)=>{
+    const li=document.createElement('li'), sp=document.createElement('span'), a=document.createElement('a');
+    sp.textContent=t; a.href='https://music.youtube.com/search?q='+encodeURIComponent(t); a.target='_blank'; a.rel='noopener'; a.textContent='Search';
+    li.append(sp,a);
+    if(S.apiKey) li.append(mk('Find options',()=>reqFind(i),'sm'));
+    li.append(mk('Dismiss',()=>{S.req.splice(i,1); delete reqRes[t]; save(); renderReq();},'sm'));
+    const r=reqRes[t];
+    if(r&&r.length){
+      const box=document.createElement('div'); box.className='subs';
+      r.forEach(v=>{
+        const row=document.createElement('div'), lab=document.createElement('span'), pv=document.createElement('a');
+        lab.textContent=v.name+' — '+v.by; pv.href=vurl(v.id); pv.target='_blank'; pv.rel='noopener'; pv.textContent='Preview';
+        row.append(lab,pv,mk('Add',()=>reqAdd(i,v),'sm')); box.append(row);
+      });
+      li.append(box);
+    }
+    ul.append(li);
+  });
+}
+async function reqFind(i){
+  const t=S.req[i], m=$('reqMsg'); m.textContent='Looking…';
+  try{
+    const r=await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&videoCategoryId=10&safeSearch=strict&maxResults=5&q='+encodeURIComponent(t)+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
+    if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
+    reqRes[t]=(j.items||[]).filter(v=>v.id&&v.id.videoId).map(v=>({id:v.id.videoId,name:dec(v.snippet.title),by:dec(v.snippet.channelTitle)}));
+    m.textContent=reqRes[t].length?'Preview the options, then tap Add.':'No results. Try the Search link instead.';
+    renderReq();
+  }catch(e){m.textContent='YouTube said: '+e.message;}
+}
+function reqAdd(i,v){
+  if(!S.items.some(x=>x.id===v.id)) S.items.push({type:'song',id:v.id,name:v.name});
+  const t=S.req[i]; S.req.splice(i,1); delete reqRes[t]; save(); resetQ(); render(); renderParent();
+  $('reqMsg').textContent='Added “'+v.name+'”.';
+  if(S.apiKey) checkEmbeds(true);
+}
+{const _p=renderParent; renderParent=function(){_p(); renderReq(); renderAsk(); renderNt();};}
+/* ---------- search all songs (text only, filtered) + remote approval ---------- */
+const BAD=/\b(fuck\w*|f\*+k\w*|shit\w*|sh\*t\w*|bitch\w*|b\*tch\w*|ass|asses|asshole\w*|dick\w*|cock\w*|pussy|cunt\w*|nigg\w*|fag\w*|whore\w*|slut\w*|bastard\w*|porn\w*|sex|sexy|sexual|nude|naked|nsfw|drug\w*|cocaine|heroin|weed|kill\w*|murder\w*|suicid\w*)\b/i;
+const EXP=/\b(explicit|uncensored|dirty|nsfw)\b/i;
+let moreRes=[], moreFor='';
+function renderMore(){
+  const w=$('more'); w.textContent='';
+  if(!qs||moreFor!==qs) return;
+  if(!moreRes.length){const p=document.createElement('p'); p.className='msg'; p.textContent='Nothing else found. Try the 🙋 button.'; w.append(p); return;}
+  const h=document.createElement('h3'); h.className='grp'; h.textContent='More songs you can ask for'; w.append(h);
+  moreRes.forEach(v=>{
+    const r=document.createElement('div'), t=document.createElement('span'); r.className='mrow';
+    t.textContent=v.name+' — '+v.by; r.append(t,mk('🙋 Ask',()=>askVideo(v),'btn')); w.append(r);
+  });
+}
+async function moreSearch(q){
+  const w=$('more'); w.textContent='Looking…';
+  try{
+    const r=await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&videoCategoryId=10&safeSearch=strict&maxResults=20&q='+encodeURIComponent(q)+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
+    if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
+    let c=(j.items||[]).filter(v=>v.id&&v.id.videoId).map(v=>({id:v.id.videoId,name:dec(v.snippet.title),by:dec(v.snippet.channelTitle),d:v.snippet.description||''}));
+    c=c.filter(v=>!BAD.test(v.name)&&!BAD.test(v.by)&&!EXP.test(v.name+' '+v.d.slice(0,300))&&!S.items.some(x=>x.id===v.id));
+    if(c.length){
+      const rr=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status,contentDetails&id='+c.map(v=>v.id).join(',')+'&key='+encodeURIComponent(S.apiKey)), jj=await rr.json();
+      if(rr.ok){
+        const m=new Map((jj.items||[]).map(v=>[v.id,v]));
+        c=c.filter(v=>{const x=m.get(v.id); return x&&x.status&&x.status.embeddable!==false&&((x.contentDetails||{}).contentRating||{}).ytRating!=='ytAgeRestricted';});
+      }
+    }
+    if(q!==qs) return;
+    moreRes=c.slice(0,8); moreFor=q; renderMore();
+  }catch(e){w.textContent='Couldn’t look that up right now.';}
+}
+function askVideo(v){
+  if(S.items.some(x=>x.id===v.id)){toast('That one is already here!'); return;}
+  const ex=S.ask.find(a=>a.id===v.id);
+  if(ex&&ex.st==='p'){toast('Already asked. Waiting for a grown-up 🙋'); return;}
+  S.ask=S.ask.filter(a=>a.id!==v.id);
+  S.ask.push({id:v.id,name:v.name,by:v.by,st:'p',t:Date.now()}); if(S.ask.length>40) S.ask.shift();
+  save(); toast('Asked a grown-up to approve “'+v.name+'” 🙋');
+  push({title:'🙋 Song request',message:v.name+' — '+v.by,vid:v.id}); renderParent();
+}
+function siteUrl(){return location.origin+location.pathname;}
+async function push(o){
+  const k=S.mail&&S.mail.key, n=S.ntfy;
+  if(!k||!n||!n.ans) return false;
+  let msg=o.message+'\n';
+  if(o.vid) msg+='\nPreview: '+vurl(o.vid)+'\n\nApprove: '+siteUrl()+'#ans='+n.ans+'&m=y:'+o.vid+'\n\nNo thanks: '+siteUrl()+'#ans='+n.ans+'&m=n:'+o.vid+'\n';
+  else if(o.url) msg+='\nSearch YouTube Music: '+o.url+'\n';
+  try{
+    const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({access_key:k,subject:o.title+': '+o.message.slice(0,60),from_name:'YouthBox',message:msg})});
+    const j=await r.json(); return !!j.success;
+  }catch(e){return false;}
+}
+function decide(vid,yes){
+  const a=S.ask.find(x=>x.id===vid&&x.st==='p'); if(!a) return;
+  a.st=yes?'y':'n';
+  if(yes&&!S.items.some(x=>x.id===vid)) S.items.push({type:'song',id:vid,name:a.name});
+  save(); resetQ(); render(); renderParent();
+  toast(yes?'🎉 “'+a.name+'” was approved! Find it in All songs.':'Not this time: “'+a.name+'”');
+}
+async function pollAnswers(){
+  const n=S.ntfy; if(!n||!n.ans||!S.ask.some(a=>a.st==='p')) return;
+  try{
+    const r=await fetch('https://ntfy.sh/'+n.ans+'/json?poll=1&since='+encodeURIComponent(n.since||'all'));
+    if(!r.ok) return;
+    (await r.text()).split('\n').filter(Boolean).forEach(line=>{
+      try{
+        const m=JSON.parse(line); if(m.event!=='message') return; n.since=m.id;
+        const mm=/^([yn]):([\w-]{11})$/.exec((m.message||'').trim()); if(mm) decide(mm[2],mm[1]==='y');
+      }catch(e){}
+    });
+    save();
+  }catch(e){}
+}
+function renderAsk(){
+  const ul=$('askL'); ul.textContent='';
+  S.ask.filter(a=>a.st==='p').forEach(a=>{
+    const li=document.createElement('li'), sp=document.createElement('span'), pv=document.createElement('a');
+    sp.textContent=a.name+' — '+a.by; pv.href=vurl(a.id); pv.target='_blank'; pv.rel='noopener'; pv.textContent='Preview';
+    li.append(sp,pv,mk('Approve',()=>decide(a.id,true),'sm'),mk('No',()=>decide(a.id,false),'sm')); ul.append(li);
+  });
+}
+function renderNt(){$('mailKey').value=(S.mail&&S.mail.key)||'';}
+$('ntSet').onclick=()=>{
+  const k=$('mailKey').value.trim(), m=$('ntMsg');
+  if(!k){m.textContent='Paste your key first.'; return;}
+  const rnd=()=>Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');
+  S.mail={key:k}; if(!S.ntfy||!S.ntfy.ans) S.ntfy={ask:'',ans:'yb-'+rnd()+'-ans',since:''};
+  save(); m.textContent='Saved. Now tap Send test email.';
+};
+$('ntTest').onclick=async()=>{
+  const m=$('ntMsg'); m.textContent='Sending…';
+  m.textContent=(await push({title:'YouthBox test',message:'It works! Song requests will arrive like this.'}))?'Sent. Check your email (and spam).':'Couldn’t send. Check the key and that you’re online.';
+};
+$('ntOff').onclick=()=>{S.mail={key:''}; save(); renderNt(); $('ntMsg').textContent='Alerts are off.';};
+setInterval(()=>{if(!document.hidden) pollAnswers();},15000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden) pollAnswers();});
+pollAnswers();
 paintVid(); paintShuf(); render(); setIcon(false);
 if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
 if(S.apiKey&&S.lastCheck!==today()) checkEmbeds(true);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 if(limitHit()) showBreak();
+(function(){
+  const m=/^#ans=([\w-]+)&m=([yn]):([\w-]{11})$/.exec(location.hash);
+  if(!m) return;
+  history.replaceState(null,'',location.pathname+location.search);
+  const ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-content:center;text-align:center;gap:14px;padding:24px;font-size:1.3rem';
+  ov.textContent='Sending your answer…'; document.body.append(ov);
+  fetch('https://ntfy.sh/'+m[1],{method:'POST',body:m[2]+':'+m[3]}).then(r=>{
+    ov.textContent=r.ok?(m[2]==='y'?'✅ Approved! The song will appear in her library.':'👍 Got it. She’ll see “not this time”.'):'Couldn’t send. Try the link again.';
+  }).catch(()=>{ov.textContent='Couldn’t send. Check your connection and try the link again.';});
+})();
 </script>
 </body>
 </html>

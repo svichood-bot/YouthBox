@@ -311,20 +311,6 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <ul id="reqL"></ul>
   <p id="reqMsg" class="msg"></p>
   <hr>
-  <h2>Email alerts 📧</h2>
-  <p class="msg">When she asks for a song, you get an email with <b>Approve</b> and <b>No</b> links. Tap one, even when you’re out, and her app picks it up.</p>
-  <details><summary>How to set it up (free, no app)</summary>
-    <ol class="how">
-      <li>On your phone, go to <b>web3forms.com</b>, enter your email and tap <b>Create Access Key</b>.</li>
-      <li>Check your email for the key and copy it.</li>
-      <li>Paste it below, tap <b>Save</b>, then <b>Send test email</b>.</li>
-    </ol>
-    <p class="msg">Requests pass through Web3Forms (to send the email) and ntfy.sh (to carry your answer back), so the song name leaves this device. Free limit: about 250 emails a month.</p>
-  </details>
-  <input id="mailKey" type="password" autocomplete="off" placeholder="Paste your Web3Forms key" aria-label="Web3Forms key">
-  <div class="row"><button id="ntSet" class="btn alt">Save</button><button id="ntTest" class="btn alt">Send test email</button><button id="ntOff" class="btn alt">Turn off</button></div>
-  <p id="ntMsg" class="msg"></p>
-  <hr>
   <h2>Kids’ lists</h2>
   <ul id="kpl"></ul>
   <hr>
@@ -382,7 +368,7 @@ const $=id=>document.getElementById(id);
   });
 })();
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
-const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0,hideVid:true,req:[],ask:[],ntfy:{ask:'',ans:'',since:''},mail:{key:''}};
+const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0,hideVid:true,req:[],ask:[]};
 let S=load();
 function load(){try{return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return Object.assign({},DEF)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -568,7 +554,7 @@ function play(i,fromPrev){
   if(limitHit()){showBreak(); return;}
   if(!fromPrev&&cur>=0&&cur!==i){hist.push(cur); if(hist.length>50) hist.shift();}
   cur=i; const it=S.items[i];
-  $('now').textContent=it.name; $('coverT').textContent=it.name; setBarArt(it,i); render();
+  $('now').textContent=it.name; $('coverT').textContent=it.name; setBarArt(it,i); setSession(it); render();
   if(!pReady){pending=i; return;}
   if(it.type==='list'){
     player.loadPlaylist({list:it.id,listType:'playlist',index:0});
@@ -614,6 +600,7 @@ $('pp').onclick=toggle; $('shield').onclick=toggle; $('next').onclick=nextBtn; $
 
 function onState(e){
   const playing=e.data===1; setIcon(playing); document.body.classList.toggle('playing',playing); if(playing) $('pp').classList.remove('nudge');
+  try{navigator.mediaSession.playbackState=playing?'playing':'paused';}catch(x){}
   if(playing){errs=0; startTick();} else stopTick();
   if(e.data===0){
     if(inList()){try{if(player.getPlaylistIndex()<player.getPlaylist().length-1) return;}catch(x){}}
@@ -1028,6 +1015,16 @@ setInterval(()=>{
 },500);
 function paintVid(){document.body.classList.toggle('hidevid',S.hideVid!==false); $('hideVid').checked=S.hideVid!==false;}
 $('hideVid').onchange=()=>{S.hideVid=$('hideVid').checked; save(); paintVid();};
+/* ---------- lock-screen / notification controls ---------- */
+function setSession(it){
+  if(!('mediaSession' in navigator)||!it) return;
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:it.name,artist:'YouthBox',artwork:it.type==='song'?[{src:'https://i.ytimg.com/vi/'+it.id+'/mqdefault.jpg',sizes:'320x180',type:'image/jpeg'}]:[]});}catch(e){}
+}
+if('mediaSession' in navigator){
+  const h=(a,f)=>{try{navigator.mediaSession.setActionHandler(a,f);}catch(e){}};
+  h('play',()=>{if(pReady) player.playVideo();}); h('pause',()=>{if(pReady) player.pauseVideo();});
+  h('nexttrack',()=>nextBtn()); h('previoustrack',()=>prevBtn());
+}
 /* ---------- screens, back button, swipe-up player ---------- */
 let inHist=false, shOpen=false, pt=null;
 function viewTitle(){
@@ -1087,7 +1084,8 @@ function ensurePlay(){
   },{passive:true});
   $('shX').onclick=closeSheet;
 })();
-{const _r=render; render=function(){_r(); if(shOpen) renderQ();};}
+function badge(){const n=S.ask.filter(a=>a.st==='p').length+S.req.length; $('gu').textContent='Grown-ups'+(n?' · '+n:'');}
+{const _r=render; render=function(){_r(); if(shOpen) renderQ(); badge();};}
 /* ---------- search and song requests ---------- */
 const reqRes={};
 function toast(m){const t=$('toast'); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>{t.hidden=true;},3200);}
@@ -1097,7 +1095,7 @@ function askAdd(t){
   t=t.trim().slice(0,60); if(!t) return;
   if(!S.req.includes(t)){S.req.push(t); if(S.req.length>30) S.req.shift(); save();}
   toast('Asked a grown-up to add “'+t+'” 🙋');
-  push({title:'🙋 Song request',message:'“'+t+'” isn’t in YouthBox yet',url:'https://music.youtube.com/search?q='+encodeURIComponent(t)});
+  badge();
 }
 function renderReq(){
   const ul=$('reqL'); ul.textContent='';
@@ -1137,7 +1135,7 @@ function reqAdd(i,v){
   $('reqMsg').textContent='Added “'+v.name+'”.';
   if(S.apiKey) checkEmbeds(true);
 }
-{const _p=renderParent; renderParent=function(){_p(); renderReq(); renderAsk(); renderNt();};}
+{const _p=renderParent; renderParent=function(){_p(); renderReq(); renderAsk(); badge();};}
 /* ---------- search all songs (text only, filtered) + remote approval ---------- */
 const BAD=/\b(fuck\w*|f\*+k\w*|shit\w*|sh\*t\w*|bitch\w*|b\*tch\w*|ass|asses|asshole\w*|dick\w*|cock\w*|pussy|cunt\w*|nigg\w*|fag\w*|whore\w*|slut\w*|bastard\w*|porn\w*|sex|sexy|sexual|nude|naked|nsfw|drug\w*|cocaine|heroin|weed|kill\w*|murder\w*|suicid\w*)\b/i;
 const EXP=/\b(explicit|uncensored|dirty|nsfw)\b/i;
@@ -1177,19 +1175,7 @@ function askVideo(v){
   S.ask=S.ask.filter(a=>a.id!==v.id);
   S.ask.push({id:v.id,name:v.name,by:v.by,st:'p',t:Date.now()}); if(S.ask.length>40) S.ask.shift();
   save(); toast('Asked a grown-up to approve “'+v.name+'” 🙋');
-  push({title:'🙋 Song request',message:v.name+' — '+v.by,vid:v.id}); renderParent();
-}
-function siteUrl(){return location.origin+location.pathname;}
-async function push(o){
-  const k=S.mail&&S.mail.key, n=S.ntfy;
-  if(!k||!n||!n.ans) return false;
-  let msg=o.message+'\n';
-  if(o.vid) msg+='\nPreview: '+vurl(o.vid)+'\n\nApprove: '+siteUrl()+'#ans='+n.ans+'&m=y:'+o.vid+'\n\nNo thanks: '+siteUrl()+'#ans='+n.ans+'&m=n:'+o.vid+'\n';
-  else if(o.url) msg+='\nSearch YouTube Music: '+o.url+'\n';
-  try{
-    const r=await fetch('https://api.web3forms.com/submit',{method:'POST',headers:{'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({access_key:k,subject:o.title+': '+o.message.slice(0,60),from_name:'YouthBox',message:msg})});
-    const j=await r.json(); return !!j.success;
-  }catch(e){return false;}
+  renderParent();
 }
 function decide(vid,yes){
   const a=S.ask.find(x=>x.id===vid&&x.st==='p'); if(!a) return;
@@ -1197,20 +1183,6 @@ function decide(vid,yes){
   if(yes&&!S.items.some(x=>x.id===vid)) S.items.push({type:'song',id:vid,name:a.name});
   save(); resetQ(); render(); renderParent();
   toast(yes?'🎉 “'+a.name+'” was approved! Find it in All songs.':'Not this time: “'+a.name+'”');
-}
-async function pollAnswers(){
-  const n=S.ntfy; if(!n||!n.ans||!S.ask.some(a=>a.st==='p')) return;
-  try{
-    const r=await fetch('https://ntfy.sh/'+n.ans+'/json?poll=1&since='+encodeURIComponent(n.since||'all'));
-    if(!r.ok) return;
-    (await r.text()).split('\n').filter(Boolean).forEach(line=>{
-      try{
-        const m=JSON.parse(line); if(m.event!=='message') return; n.since=m.id;
-        const mm=/^([yn]):([\w-]{11})$/.exec((m.message||'').trim()); if(mm) decide(mm[2],mm[1]==='y');
-      }catch(e){}
-    });
-    save();
-  }catch(e){}
 }
 function renderAsk(){
   const ul=$('askL'); ul.textContent='';
@@ -1220,38 +1192,11 @@ function renderAsk(){
     li.append(sp,pv,mk('Approve',()=>decide(a.id,true),'sm'),mk('No',()=>decide(a.id,false),'sm')); ul.append(li);
   });
 }
-function renderNt(){$('mailKey').value=(S.mail&&S.mail.key)||'';}
-$('ntSet').onclick=()=>{
-  const k=$('mailKey').value.trim(), m=$('ntMsg');
-  if(!k){m.textContent='Paste your key first.'; return;}
-  const rnd=()=>Array.from(crypto.getRandomValues(new Uint8Array(12)),b=>'abcdefghijklmnopqrstuvwxyz0123456789'[b%36]).join('');
-  S.mail={key:k}; if(!S.ntfy||!S.ntfy.ans) S.ntfy={ask:'',ans:'yb-'+rnd()+'-ans',since:''};
-  save(); m.textContent='Saved. Now tap Send test email.';
-};
-$('ntTest').onclick=async()=>{
-  const m=$('ntMsg'); m.textContent='Sending…';
-  m.textContent=(await push({title:'YouthBox test',message:'It works! Song requests will arrive like this.'}))?'Sent. Check your email (and spam).':'Couldn’t send. Check the key and that you’re online.';
-};
-$('ntOff').onclick=()=>{S.mail={key:''}; save(); renderNt(); $('ntMsg').textContent='Alerts are off.';};
-setInterval(()=>{if(!document.hidden) pollAnswers();},15000);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden) pollAnswers();});
-pollAnswers();
 paintVid(); paintShuf(); render(); setIcon(false);
 if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
 if(S.apiKey&&S.lastCheck!==today()) checkEmbeds(true);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 if(limitHit()) showBreak();
-(function(){
-  const m=/^#ans=([\w-]+)&m=([yn]):([\w-]{11})$/.exec(location.hash);
-  if(!m) return;
-  history.replaceState(null,'',location.pathname+location.search);
-  const ov=document.createElement('div');
-  ov.style.cssText='position:fixed;inset:0;z-index:100;background:var(--bg);display:grid;place-content:center;text-align:center;gap:14px;padding:24px;font-size:1.3rem';
-  ov.textContent='Sending your answer…'; document.body.append(ov);
-  fetch('https://ntfy.sh/'+m[1],{method:'POST',body:m[2]+':'+m[3]}).then(r=>{
-    ov.textContent=r.ok?(m[2]==='y'?'✅ Approved! The song will appear in her library.':'👍 Got it. She’ll see “not this time”.'):'Couldn’t send. Try the link again.';
-  }).catch(()=>{ov.textContent='Couldn’t send. Check your connection and try the link again.';});
-})();
 </script>
 </body>
 </html>

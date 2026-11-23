@@ -252,8 +252,9 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <h2>Move to another phone</h2>
   <p class="msg">Copy a backup, send it to the other phone (message or email to yourself), then paste it there and restore. Songs, playlists, favourites and kids’ lists come across. The YouTube key, PIN and time limit don’t.</p>
   <div class="row"><button id="bkCopy" class="btn alt">Copy backup</button></div>
-  <input id="bkIn" placeholder="Paste a backup here" autocomplete="off" aria-label="Backup text">
+  <textarea id="bkIn" rows="3" placeholder="Paste a backup here" aria-label="Backup text" style="width:100%;font:inherit;border:2px solid var(--line);border-radius:12px;padding:8px;margin:4px 0 10px"></textarea>
   <div class="row"><button id="bkRestore" class="btn alt">Restore backup</button></div>
+  <div class="row"><button id="bkFile" class="btn alt">Save backup as file</button><label class="btn alt" for="bkUp">Restore from file</label><input id="bkUp" type="file" accept=".txt,.json,text/plain" hidden></div>
   <p id="bkMsg" class="msg"></p>
   <div id="ytLinks"></div>
   <hr>
@@ -865,11 +866,13 @@ $('bkCopy').onclick=async()=>{
   try{await navigator.clipboard.writeText(code); $('bkMsg').textContent='Backup copied ('+data.items.length+' items). Send it to the other phone and paste it there.';}
   catch(e){$('bkIn').value=code; $('bkMsg').textContent='Couldn’t copy automatically. Select the text in the box below and copy it.';}
 };
-$('bkRestore').onclick=()=>{
-  const m=$('bkMsg'), t=$('bkIn').value.trim();
-  if(!t.startsWith('YOUTHBOX1:')){m.textContent='That doesn’t look like a YouthBox backup.'; return;}
+function restoreText(t){
+  const m=$('bkMsg'), at=t.indexOf('YOUTHBOX1:');
+  if(at<0){m.textContent='I can’t find a backup in that text. Copy all of it, starting at YOUTHBOX1:'; return;}
+  let b=t.slice(at+10).replace(/[^A-Za-z0-9+/_=-]/g,'').replace(/-/g,'+').replace(/_/g,'/').replace(/=+$/,'');
+  while(b.length%4) b+='=';
   try{
-    const d=JSON.parse(decodeURIComponent(escape(atob(t.slice(10)))));
+    const d=JSON.parse(decodeURIComponent(escape(atob(b))));
     if(!d||!Array.isArray(d.items)) throw 0;
     const have=new Set(S.items.map(x=>x.id)); let n=0;
     d.items.forEach(x=>{if(x&&x.id&&typeof x.name==='string'&&!have.has(x.id)){S.items.push(x); have.add(x.id); n++;}});
@@ -877,9 +880,22 @@ $('bkRestore').onclick=()=>{
     const kids=new Set(S.kp.map(p=>p.id)); let k=0;
     (d.kp||[]).forEach(p=>{if(p&&p.id&&!kids.has(p.id)&&Array.isArray(p.songs)){S.kp.push(p); k++;}});
     (d.src||[]).forEach(o=>{if(o&&o.id&&!S.src.some(x=>x.id===o.id)) S.src=[...S.src,o];});
-    save(); resetQ(); render(); renderParent(); $('bkIn').value=''; if(S.apiKey) syncAll(true);
-    m.textContent='Restored '+n+' new song'+(n===1?'':'s')+' and '+k+' list'+(k===1?'':'s')+'.';
-  }catch(e){m.textContent='Couldn’t read that backup. Make sure you copied all of it.';}
+    save(); resetQ(); render(); renderParent(); $('bkIn').value='';
+    m.textContent='Restored '+n+' new song'+(n===1?'':'s')+' and '+k+' list'+(k===1?'':'s')+'.'+(n+k===0?' (Everything in it was already here.)':'');
+    if(S.apiKey) syncAll(true);
+  }catch(e){m.textContent='The backup looks cut off or changed on the way. Try “Save backup as file” and “Restore from file” instead.';}
+}
+$('bkRestore').onclick=()=>restoreText($('bkIn').value);
+$('bkFile').onclick=()=>{
+  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp,src:S.src};
+  const code='YOUTHBOX1:'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([code],{type:'text/plain'}));
+  a.download='youthbox-backup.txt'; document.body.append(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000); $('bkMsg').textContent='Saved youthbox-backup.txt. Send that file to the other phone.';
+};
+$('bkUp').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader(); r.onload=()=>restoreText(String(r.result)); r.readAsText(f); e.target.value='';
 };
 async function syncAll(quiet){
   if(!S.apiKey||!S.src.length) return;

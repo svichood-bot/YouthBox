@@ -28,7 +28,15 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--sky);outline-of
 main{padding:0 20px;max-width:1100px;margin:0 auto}
 #screen{position:relative;aspect-ratio:16/9;width:min(100%,640px);margin:4px auto 28px;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(150,30,90,.28),0 0 0 5px #fff}
 #screen iframe{position:absolute;inset:0;width:100%;height:100%}
-#shield{position:absolute;inset:0;z-index:2;cursor:pointer}
+#shield{position:absolute;inset:0;z-index:2;cursor:pointer;clip-path:var(--win)}
+#screen{--win:polygon(0 0,100% 0,100% calc(100% - 64px),calc(100% - 200px) calc(100% - 64px),calc(100% - 200px) 100%,0 100%)}
+#cover{position:absolute;inset:0;z-index:1;pointer-events:none;clip-path:var(--win);display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center;background:radial-gradient(500px 300px at 50% 0,#fff1a8,#ffc4dd)}
+body.hidevid #cover{display:flex}
+#cover .z{font-size:3.4rem;line-height:1}
+body.playing #cover .z{animation:bop2 1s ease-in-out infinite}
+@keyframes bop2{0%,100%{transform:translateY(0) rotate(-6deg)}50%{transform:translateY(-8px) rotate(6deg)}}
+#cover p{margin:0;font-weight:600;font-size:1.1rem;line-height:1.2;max-width:90%;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media(prefers-reduced-motion:reduce){body.playing #cover .z{animation:none}}
 .sec{font-size:1.35rem;margin:0 0 14px}
 #grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:18px}
 .tile{background:none;border:0;padding:0;text-align:left;display:flex;flex-direction:column;gap:8px;font-weight:500;line-height:1.2}
@@ -135,7 +143,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <div class="hbtns"><button id="hp" class="chip">Help</button><button id="gu" class="chip">Grown-ups</button></div>
 </header>
 <main>
-  <div id="screen"><div id="yt"></div><div id="shield" title="Play or pause"></div></div>
+  <div id="screen"><div id="yt"></div><div id="cover" aria-hidden="true"><div class="z">🎵</div><p id="coverT"></p></div><div id="shield" title="Play or pause"></div></div>
   <h2 class="sec">What shall we play? 🎶</h2>
   <div id="tabs" class="tabs"></div>
   <div id="tools" class="tools"></div>
@@ -182,6 +190,23 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
     <p>Tap <b>Grown-ups</b> (you’ll need your PIN), paste a YouTube or YouTube Music link for a song or a playlist, then tap <b>Add</b>. A playlist link adds all of its songs.</p>
     <p>Spotify links don’t work here. To use a Spotify playlist, move it to YouTube Music with a transfer tool such as TuneMyMusic or Soundiiz (free plans may limit how many songs), then paste the new link.</p>
     <p>You can save your list from the Grown-ups panel to move it to Spotify or YouTube Music later.</p>
+  </details>
+  <details><summary>For grown-ups: stop the ads (YouTube Premium sign-in)</summary>
+    <p>YouthBox plays songs through YouTube’s own player. That player only skips ads for a <b>YouTube Premium or YouTube Music Premium</b> account that is signed in <b>in the same browser</b> that is showing YouthBox. It can’t be signed in from inside YouthBox, and it has nothing to do with the YouTube Kids app.</p>
+    <ol class="how">
+      <li>On the kids’ device, open the browser they use (Safari on iPhone or iPad, Chrome on Android).</li>
+      <li>Go to <b>youtube.com</b>, tap your profile icon or <b>Sign in</b>, and use the Google account that has Premium.</li>
+      <li>Check it worked: your profile picture shows and normal YouTube videos play without ads.</li>
+      <li>Open YouthBox in that <b>same browser</b> (not a private or incognito tab) and play a song.</li>
+    </ol>
+    <p><b>Still seeing ads?</b></p>
+    <ul class="how">
+      <li><b>iPhone or iPad:</b> Settings → Safari → turn off <b>Prevent Cross-Site Tracking</b>.</li>
+      <li><b>Chrome:</b> allow third-party cookies for youtube.com.</li>
+      <li><b>YouthBox on the Home Screen:</b> it keeps its own storage and is usually not signed in. Open YouthBox in the browser itself instead.</li>
+    </ul>
+    <p><b>Good to know:</b> this signs the whole browser in to your account, so anyone using it can reach your YouTube account. Use a device you control, or a separate browser profile just for YouthBox. On a Premium family plan you can sign in with a family member’s account instead of your own. This can’t be guaranteed on every device, and ads with a countdown can’t be skipped until it ends.</p>
+    <p><b>Skip button:</b> the pink picture covers the video (and any ad). YouTube’s Skip button shows in the small strip at the bottom-right. To see an ad yourself, open <b>Grown-ups</b> and turn off <b>Hide the video</b>.</p>
   </details>
   <div class="row"><button id="helpX" class="btn">Got it!</button></div>
 </dialog>
@@ -258,6 +283,8 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <p id="bkMsg" class="msg"></p>
   <div id="ytLinks"></div>
   <hr>
+  <label style="display:flex;gap:10px;align-items:center;margin:0 0 4px"><input id="hideVid" type="checkbox" style="width:auto;margin:0"> Hide the video (show a picture instead)</label>
+  <p class="msg">Leave this on for kids. Turn it off to see the video, for example to tap “Skip ad” yourself.</p>
   <label for="lim">Daily listening limit in minutes (0 = no limit)</label>
   <input id="lim" type="number" min="0" max="600">
   <p id="usedMsg" class="msg"></p>
@@ -295,7 +322,7 @@ const $=id=>document.getElementById(id);
   });
 })();
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
-const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0};
+const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0,hideVid:true};
 let S=load();
 function load(){try{return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return Object.assign({},DEF)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -473,7 +500,7 @@ function play(i,fromPrev){
   if(limitHit()){showBreak(); return;}
   if(!fromPrev&&cur>=0&&cur!==i){hist.push(cur); if(hist.length>50) hist.shift();}
   cur=i; const it=S.items[i];
-  $('now').textContent=it.name; setBarArt(it,i); render();
+  $('now').textContent=it.name; $('coverT').textContent=it.name; setBarArt(it,i); render();
   if(!pReady){pending=i; return;}
   if(it.type==='list'){
     player.loadPlaylist({list:it.id,listType:'playlist',index:0});
@@ -929,7 +956,9 @@ $('helpX').onclick=()=>$('helpD').close();
 setInterval(()=>{
   try{if(!pReady) return; const d=player.getDuration(); $('fill').style.width=d?(player.getCurrentTime()/d*100)+'%':'0';}catch(e){}
 },500);
-paintShuf(); render(); setIcon(false);
+function paintVid(){document.body.classList.toggle('hidevid',S.hideVid!==false); $('hideVid').checked=S.hideVid!==false;}
+$('hideVid').onchange=()=>{S.hideVid=$('hideVid').checked; save(); paintVid();};
+paintVid(); paintShuf(); render(); setIcon(false);
 if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
 if(S.apiKey&&S.lastCheck!==today()) checkEmbeds(true);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}

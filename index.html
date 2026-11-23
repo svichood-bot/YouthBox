@@ -168,6 +168,19 @@ summary{cursor:pointer;font-weight:600}
   <input id="nm">
   <div class="row"><button id="add" class="btn">Add</button></div>
   <p id="addMsg" class="msg"></p>
+  <details><summary>Playlist not importing? Use a free YouTube key</summary>
+    <p>This is the most reliable way to read playlists. It takes about five minutes, once.</p>
+    <ol class="how">
+      <li>Go to <b>console.cloud.google.com</b> and create a project.</li>
+      <li>Open <b>APIs &amp; Services → Library</b>, search for <b>YouTube Data API v3</b> and click <b>Enable</b>.</li>
+      <li>Open <b>APIs &amp; Services → Credentials → Create credentials → API key</b>.</li>
+      <li>Edit the key. Under <b>Application restrictions</b> pick <b>Websites</b> and add your YouthBox address ending in <b>/*</b> (for example https://yourname.github.io/*). Under <b>API restrictions</b> pick <b>YouTube Data API v3</b>. Save.</li>
+      <li>Paste the key below and tap Save key. It stays in this browser only.</li>
+    </ol>
+    <input id="apiKey" type="password" autocomplete="off" placeholder="Paste key here" aria-label="YouTube API key">
+    <div class="row"><button id="saveKey" class="btn alt">Save key</button></div>
+    <p id="keyMsg" class="msg"></p>
+  </details>
   <h2>In the library</h2>
   <ul id="plist"></ul>
   <div class="row"><button id="remBad" class="btn alt">Remove songs that won’t play</button><button id="retry" class="btn alt">Try them again</button></div>
@@ -192,7 +205,7 @@ summary{cursor:pointer;font-weight:600}
 <script>
 const $=id=>document.getElementById(id);
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
-const DEF={pin:null,limit:60,items:[],used:{},shuffle:false};
+const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:''};
 let S=load();
 function load(){try{return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return Object.assign({},DEF)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -392,6 +405,7 @@ function renderParent(){
   });
   $('lim').value=S.limit;
   $('usedMsg').textContent='Listened today: '+Math.floor(used()/60)+' min';
+  $('apiKey').value=S.apiKey||'';
   const yl=$('ytLinks'); yl.textContent='';
   const ids=S.items.filter(x=>x.type==='song'&&!x.bad).map(x=>x.id);
   for(let i=0;i<ids.length;i+=50){
@@ -417,8 +431,30 @@ async function ytTitle(u){
   catch(e){return '';}
 }
 let importErr=0;
+async function apiItems(l){
+  const out=[]; let tok='';
+  do{
+    const u='https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId='+encodeURIComponent(l)+(tok?'&pageToken='+tok:'')+'&key='+encodeURIComponent(S.apiKey);
+    const r=await fetch(u), j=await r.json();
+    if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
+    for(const it of (j.items||[])){
+      const sn=it.snippet||{};
+      if(!sn.resourceId||sn.title==='Private video'||sn.title==='Deleted video') continue;
+      out.push({id:sn.resourceId.videoId,name:sn.title});
+    }
+    tok=j.nextPageToken||'';
+  }while(tok&&out.length<500);
+  return out;
+}
 async function importList(l,label){
   const m=$('addMsg');
+  if(S.apiKey){
+    m.textContent='Reading the playlist…';
+    let items;
+    try{items=await apiItems(l);}catch(e){m.textContent='YouTube said: '+e.message; return false;}
+    if(!items.length){m.textContent='That playlist has no songs YouthBox can use.'; return false;}
+    return addSongs(items,l,label);
+  }
   if(!pReady){m.textContent='The player hasn’t loaded yet. Check you’re online and that YouthBox is open from its web address, then try again.'; return false;}
   importing=true; importErr=0; stopTick(); cur=-1; resetBar(); render();
   const peek=()=>{try{return player.getPlaylist()||[];}catch(e){return [];}};
@@ -446,21 +482,25 @@ async function importList(l,label){
     m.textContent=(code===153||code===152)?'Open YouthBox from its web address (not as a file) so YouTube will work.'
       :code===100?'YouTube says that playlist isn’t there. It may be private or deleted. Set it to Unlisted or Public and try again.'
       :(code===101||code===150)?'YouTube won’t let that playlist play outside YouTube. Try another playlist, or add its songs one at a time.'
-      :'Couldn’t read that playlist'+(code?' (YouTube error '+code+')':'')+'. It needs to be public or unlisted. Mixes and auto-made playlists don’t work.';
+      :'Couldn’t read that playlist'+(code?' (YouTube error '+code+')':'')+'. It needs to be public or unlisted. Mixes and auto-made playlists don’t work. If it is public, try the YouTube key option below the Add button.';
     return false;
   }
+  return addSongs(ids.map(id=>({id})),l,label);
+}
+async function addSongs(items,l,label){
+  const m=$('addMsg');
   const have=new Set(S.items.map(x=>x.id));
-  const fresh=ids.filter(id=>!have.has(id));
+  const fresh=items.filter(x=>!have.has(x.id));
   const group=label||(await ytTitle('https://www.youtube.com/playlist?list='+l))||'Playlist';
   let n=0;
   for(let i=0;i<fresh.length;i+=6){
-    const res=await Promise.all(fresh.slice(i,i+6).map(async id=>({type:'song',id,name:(await ytTitle(vurl(id)))||'Song',group})));
+    const res=await Promise.all(fresh.slice(i,i+6).map(async x=>({type:'song',id:x.id,name:x.name||(await ytTitle(vurl(x.id)))||'Song',group})));
     S.items.push(...res); n+=res.length;
     m.textContent='Importing… '+n+' of '+fresh.length;
   }
   S.items=S.items.filter(x=>!(x.type==='list'&&x.id===l));
   save(); resetQ(); render(); renderParent();
-  const dup=ids.length-fresh.length;
+  const dup=items.length-fresh.length;
   m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+'.';
   return true;
 }
@@ -478,6 +518,7 @@ $('add').onclick=async()=>{
   $('url').value=''; $('nm').value=''; m.textContent='Added “'+title+'”.';
   render(); renderParent();
 };
+$('saveKey').onclick=()=>{S.apiKey=$('apiKey').value.trim(); save(); $('keyMsg').textContent=S.apiKey?'Key saved. Now try adding the playlist again.':'Key removed.';};
 $('remBad').onclick=()=>{
   S.items=S.items.filter(x=>!x.bad); save(); resetQ();
   cur=-1; if(pReady) player.stopVideo(); resetBar(); render(); renderParent();

@@ -246,6 +246,13 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <p class="msg">Save your list so you can move it to YouTube Music or Spotify later.</p>
   <div class="row"><button id="dlCsv" class="btn alt">Download list (CSV)</button><button id="cpList" class="btn alt">Copy list</button></div>
   <p id="expMsg" class="msg"></p>
+  <hr>
+  <h2>Move to another phone</h2>
+  <p class="msg">Copy a backup, send it to the other phone (message or email to yourself), then paste it there and restore. Songs, playlists, favourites and kids’ lists come across. The YouTube key, PIN and time limit don’t.</p>
+  <div class="row"><button id="bkCopy" class="btn alt">Copy backup</button></div>
+  <input id="bkIn" placeholder="Paste a backup here" autocomplete="off" aria-label="Backup text">
+  <div class="row"><button id="bkRestore" class="btn alt">Restore backup</button></div>
+  <p id="bkMsg" class="msg"></p>
   <div id="ytLinks"></div>
   <hr>
   <label for="lim">Daily listening limit in minutes (0 = no limit)</label>
@@ -833,6 +840,28 @@ $('addQ').onclick=()=>{S.q=S.q.filter(x=>x!==addId); S.q.push(addId); save(); $(
 $('addNew').onclick=()=>{const id=addId; $('addD').close(); openNew(id);};
 $('addX').onclick=()=>$('addD').close();
 $('addD').addEventListener('close',()=>render());
+/* ---------- backup / restore ---------- */
+$('bkCopy').onclick=async()=>{
+  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp};
+  const code='YOUTHBOX1:'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+  try{await navigator.clipboard.writeText(code); $('bkMsg').textContent='Backup copied ('+data.items.length+' items). Send it to the other phone and paste it there.';}
+  catch(e){$('bkIn').value=code; $('bkMsg').textContent='Couldn’t copy automatically. Select the text in the box below and copy it.';}
+};
+$('bkRestore').onclick=()=>{
+  const m=$('bkMsg'), t=$('bkIn').value.trim();
+  if(!t.startsWith('YOUTHBOX1:')){m.textContent='That doesn’t look like a YouthBox backup.'; return;}
+  try{
+    const d=JSON.parse(decodeURIComponent(escape(atob(t.slice(10)))));
+    if(!d||!Array.isArray(d.items)) throw 0;
+    const have=new Set(S.items.map(x=>x.id)); let n=0;
+    d.items.forEach(x=>{if(x&&x.id&&typeof x.name==='string'&&!have.has(x.id)){S.items.push(x); have.add(x.id); n++;}});
+    (d.favs||[]).forEach(id=>{if(!S.favs.includes(id)) S.favs=[...S.favs,id];});
+    const kids=new Set(S.kp.map(p=>p.id)); let k=0;
+    (d.kp||[]).forEach(p=>{if(p&&p.id&&!kids.has(p.id)&&Array.isArray(p.songs)){S.kp.push(p); k++;}});
+    save(); resetQ(); render(); renderParent(); $('bkIn').value='';
+    m.textContent='Restored '+n+' new song'+(n===1?'':'s')+' and '+k+' list'+(k===1?'':'s')+'.';
+  }catch(e){m.textContent='Couldn’t read that backup. Make sure you copied all of it.';}
+};
 $('hp').onclick=()=>$('helpD').showModal();
 $('helpX').onclick=()=>$('helpD').close();
 

@@ -114,6 +114,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
 .qrow img{width:48px;height:48px;border-radius:10px;object-fit:cover}
 .qrow span{flex:1;min-width:0;line-height:1.2}
 .qrow button{width:40px;height:40px;border-radius:50%;border:0;background:var(--card2);font-size:1.05rem;padding:0}
+#qbtn{font-size:1.3rem}
 </style>
 </head>
 <body>
@@ -147,6 +148,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
     <div id="barArt">🎵</div>
     <p id="now">Pick a song to start.</p>
     <div id="ctl">
+      <button id="qbtn" aria-label="Up next">☰</button>
       <button id="shuf" class="tog" aria-pressed="false" aria-label="Shuffle"><svg viewBox="0 0 24 24"><path d="M3 6h4c5 0 5 12 10 12h4M3 18h4c2 0 3.2-1.4 4.2-3M14 8c.9-1.2 1.9-2 3-2h4M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button>
       <button id="prev" aria-label="Previous song"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
       <button id="pp" class="big" aria-label="Play"><svg viewBox="0 0 24 24"><circle cx="8.3" cy="7.2" r="1.8"/><circle cx="15.7" cy="7.2" r="1.8"/><g id="ico"><path d="M9 10.5v10l8-5z"/></g></svg></button>
@@ -236,7 +238,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <h2>In the library</h2>
   <ul id="plist"></ul>
   <div class="row"><button id="remBad" class="btn alt">Remove songs that won’t play</button><button id="retry" class="btn alt">Try them again</button></div>
-  <div class="row"><button id="chk" class="btn alt">Check songs now</button><button id="subAll" class="btn alt">Find replacements</button></div>
+  <div class="row"><button id="chk" class="btn alt">Check songs now</button><button id="subAll" class="btn alt">Find replacements</button><button id="syncNow" class="btn alt">Refresh playlists</button></div>
   <p class="msg">Songs that can’t play are hidden from the kids automatically. Checking and finding replacements needs the YouTube key.</p>
   <hr>
   <h2>Kids’ lists</h2>
@@ -292,7 +294,7 @@ const $=id=>document.getElementById(id);
   });
 })();
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
-const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added'};
+const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added',src:[],lastSync:0};
 let S=load();
 function load(){try{return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return Object.assign({},DEF)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -363,6 +365,14 @@ function renderQueue(g){
   });
   g.append(box);
 }
+function buildQ(i){
+  const v=vis(), k=v.indexOf(i);
+  const r=k<0?v.filter(x=>x!==i):[...v.slice(k+1),...v.slice(0,k)];
+  if(S.shuffle) for(let a=r.length-1;a>0;a--){const b=Math.floor(Math.random()*(a+1)); [r[a],r[b]]=[r[b],r[a]];}
+  S.q=r.map(x=>S.items[x].id); save();
+}
+function playFrom(i){play(i); buildQ(i); if(view==='q') render();}
+$('qbtn').onclick=()=>{view=view==='q'?'home':'q'; render(); window.scrollTo({top:0,behavior:'smooth'});};
 function popQ(){
   while(S.q.length){
     const id=S.q.shift(), i=S.items.findIndex(x=>x.id===id&&!x.bad);
@@ -373,7 +383,7 @@ function popQ(){
 function renderTabs(){
   const t=$('tabs'); t.textContent='';
   const add=(label,v,fn)=>{const b=document.createElement('button'); b.className='chip'+(v===view?' sel':''); b.textContent=label; b.onclick=fn||(()=>{view=v; resetQ(); render();}); t.append(b);};
-  add(view.startsWith('g:')?'← Playlists':'📀 Playlists','home'); add('🎶 All songs','all'); add('❤️ Favourites','fav'); add('🎧 Queue'+(S.q.length?' ('+S.q.length+')':''),'q');
+  add((view.startsWith('g:')||view==='q')?'← Back':'📀 Playlists','home'); add('🎶 All songs','all'); add('❤️ Favourites','fav');
   S.kp.forEach(p=>add(p.icon+' '+p.name,p.id));
   add('➕ New list','',openNew);
   if(S.kp.some(p=>p.id===view)) add('✏️ Edit list','',openPick);
@@ -417,7 +427,7 @@ function render(){
     else{a.style.background=COL[i%COL.length]; a.textContent='💿';}
     if(i===cur) a.insertAdjacentHTML('beforeend','<i class="eq"><b></b><b></b><b></b></i>');
     const t=document.createElement('span'); t.textContent=it.name;
-    b.append(a,t); b.onclick=()=>play(i); cell.append(b);
+    b.append(a,t); b.onclick=()=>playFrom(i); cell.append(b);
     if(it.type==='song'){
       const f=S.favs.includes(it.id), h=document.createElement('button');
       h.className='heart'; h.textContent=f?'❤️':'🤍'; h.setAttribute('aria-pressed',f?'true':'false');
@@ -481,7 +491,7 @@ function nextIdx(){
   }
   const k=v.indexOf(cur); return v[(k+1)%v.length];
 }
-function nextPlayable(){const q=popQ(); return q!==null?q:nextIdx();}
+function nextPlayable(){let q=popQ(); if(q===null){buildQ(cur); q=popQ();} return q;}
 function nextBtn(){
   if(!S.items.length) return;
   if(inList()){try{if(player.getPlaylistIndex()<player.getPlaylist().length-1){player.nextVideo(); return;}}catch(e){}}
@@ -494,13 +504,13 @@ function prevBtn(){
   const v=vis(); if(!v.length) return; const k=v.indexOf(cur); play(v[k<=0?v.length-1:k-1],true);
 }
 function toggle(){
-  if(cur<0){const v=vis(); if(v.length) play(v[0]); return;}
+  if(cur<0){const v=vis(); if(v.length) playFrom(v[0]); return;}
   if(!pReady) return;
   player.getPlayerState()===1?player.pauseVideo():player.playVideo();
 }
 function paintShuf(){$('shuf').setAttribute('aria-pressed',S.shuffle?'true':'false');}
 $('shuf').onclick=()=>{
-  S.shuffle=!S.shuffle; save(); resetQ(); paintShuf();
+  S.shuffle=!S.shuffle; save(); resetQ(); paintShuf(); if(cur>=0) buildQ(cur);
   if(pReady&&inList()){try{player.setShuffle(S.shuffle);}catch(e){}}
 };
 $('pp').onclick=toggle; $('shield').onclick=toggle; $('next').onclick=nextBtn; $('prev').onclick=prevBtn;
@@ -688,10 +698,12 @@ async function addSongs(items,l,label){
   const group=label||(await ytTitle('https://www.youtube.com/playlist?list='+l))||'Playlist';
   let n=0;
   for(let i=0;i<fresh.length;i+=6){
-    const res=await Promise.all(fresh.slice(i,i+6).map(async x=>({type:'song',id:x.id,name:x.name||(await ytTitle(vurl(x.id)))||'Song',group})));
+    const res=await Promise.all(fresh.slice(i,i+6).map(async x=>({type:'song',id:x.id,name:x.name||(await ytTitle(vurl(x.id)))||'Song',group,src:l})));
     S.items.push(...res); n+=res.length;
     m.textContent='Importing… '+n+' of '+fresh.length;
   }
+  S.items.forEach(x=>{if(!x.src&&items.some(y=>y.id===x.id)){x.src=l; if(!x.group) x.group=group;}});
+  if(!S.src.some(o=>o.id===l)) S.src=[...S.src,{id:l,name:group}];
   S.items=S.items.filter(x=>!(x.type==='list'&&x.id===l));
   save(); resetQ(); render(); renderParent();
   const nb=S.apiKey?await checkEmbeds(true):0;
@@ -742,12 +754,18 @@ async function checkEmbeds(quiet){
   try{
     for(let i=0;i<all.length;i+=50){
       const ch=all.slice(i,i+50);
-      const r=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status&maxResults=50&id='+ch.map(x=>x.id).join(',')+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
+      const r=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status,snippet,contentDetails&maxResults=50&id='+ch.map(x=>x.id).join(',')+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
       if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
-      const st=new Map((j.items||[]).map(v=>[v.id,v.status||{}]));
-      ch.forEach(x=>{const z=st.get(x.id); if((!z||z.embeddable===false)&&!x.bad){x.bad=true; bad++;}});
+      const st=new Map((j.items||[]).map(v=>[v.id,v]));
+      ch.forEach(x=>{
+        const v=st.get(x.id), z=v&&v.status; if(x.bad) return;
+        const sn=v?((v.snippet.title||'')+' '+(v.snippet.description||'').slice(0,400)):'';
+        const ex=v&&!/\bclean\b/i.test(v.snippet.title||'')&&(/\b(explicit|uncensored|dirty)\b/i.test(sn)||((v.contentDetails||{}).contentRating||{}).ytRating==='ytAgeRestricted');
+        if(!z||z.embeddable===false){x.bad=true; x.why='blocked'; bad++;} else if(ex){x.bad=true; x.why='explicit'; bad++;}
+      });
     }
     S.lastCheck=today(); save(); resetQ(); render(); renderParent();
+    if(bad) autoFix();
     if(!quiet) $('addMsg').textContent=bad?bad+' more song'+(bad===1?'':'s')+' can’t play in apps and '+(bad===1?'is':'are')+' now hidden.':'All songs look fine.';
   }catch(e){if(!quiet) $('addMsg').textContent='Couldn’t check: '+e.message;}
   return bad;
@@ -756,11 +774,11 @@ async function findSub(i,quiet){
   const it=S.items[i], m=$('addMsg');
   if(!S.apiKey){m.textContent='Save a YouTube key first (see “Playlist not importing?”).'; return false;}
   if(!quiet) m.textContent='Looking for a replacement…';
-  const q=it.name.replace(/\(.*?\)|\[.*?\]/g,'').trim();
+  const q=it.name.replace(/\(.*?\)|\[.*?\]/g,'').trim()+(it.why==='explicit'?' clean version':'');
   try{
     const r=await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&videoCategoryId=10&safeSearch=strict&maxResults=4&q='+encodeURIComponent(q)+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
     if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
-    it.subs=(j.items||[]).filter(v=>v.id&&v.id.videoId&&v.id.videoId!==it.id&&!S.items.some(x=>x.id===v.id.videoId))
+    it.subs=(j.items||[]).filter(v=>v.id&&v.id.videoId&&v.id.videoId!==it.id&&!/\bexplicit\b/i.test(v.snippet.title)&&!S.items.some(x=>x.id===v.id.videoId))
       .map(v=>({id:v.id.videoId,name:dec(v.snippet.title),by:dec(v.snippet.channelTitle)}));
     save(); renderParent();
     if(!quiet) m.textContent=it.subs.length?'Check the options below, then tap Use.':'No replacement found. You can remove it or paste a link.';
@@ -842,7 +860,7 @@ $('addX').onclick=()=>$('addD').close();
 $('addD').addEventListener('close',()=>render());
 /* ---------- backup / restore ---------- */
 $('bkCopy').onclick=async()=>{
-  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp};
+  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp,src:S.src};
   const code='YOUTHBOX1:'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   try{await navigator.clipboard.writeText(code); $('bkMsg').textContent='Backup copied ('+data.items.length+' items). Send it to the other phone and paste it there.';}
   catch(e){$('bkIn').value=code; $('bkMsg').textContent='Couldn’t copy automatically. Select the text in the box below and copy it.';}
@@ -858,10 +876,37 @@ $('bkRestore').onclick=()=>{
     (d.favs||[]).forEach(id=>{if(!S.favs.includes(id)) S.favs=[...S.favs,id];});
     const kids=new Set(S.kp.map(p=>p.id)); let k=0;
     (d.kp||[]).forEach(p=>{if(p&&p.id&&!kids.has(p.id)&&Array.isArray(p.songs)){S.kp.push(p); k++;}});
-    save(); resetQ(); render(); renderParent(); $('bkIn').value='';
+    (d.src||[]).forEach(o=>{if(o&&o.id&&!S.src.some(x=>x.id===o.id)) S.src=[...S.src,o];});
+    save(); resetQ(); render(); renderParent(); $('bkIn').value=''; if(S.apiKey) syncAll(true);
     m.textContent='Restored '+n+' new song'+(n===1?'':'s')+' and '+k+' list'+(k===1?'':'s')+'.';
   }catch(e){m.textContent='Couldn’t read that backup. Make sure you copied all of it.';}
 };
+async function syncAll(quiet){
+  if(!S.apiKey||!S.src.length) return;
+  let add=0,rem=0;
+  for(const o of S.src){
+    try{
+      const items=await apiItems(o.id); if(!items.length) continue;
+      const ids=new Set(items.map(x=>x.id)), have=new Set(S.items.map(x=>x.id));
+      items.filter(x=>!have.has(x.id)).forEach(x=>{S.items.push({type:'song',id:x.id,name:x.name,group:o.name,src:o.id}); add++;});
+      const n=S.items.length; S.items=S.items.filter(x=>!(x.src===o.id&&!ids.has(x.id))); rem+=n-S.items.length;
+    }catch(e){if(!quiet) $('addMsg').textContent='Refresh problem: '+e.message;}
+  }
+  S.lastSync=Date.now(); save(); resetQ(); render(); renderParent();
+  if(!quiet) $('addMsg').textContent='Playlists refreshed: '+add+' added, '+rem+' removed.';
+  if(add) checkEmbeds(true);
+}
+$('syncNow').onclick=()=>{$('addMsg').textContent='Refreshing…'; syncAll(false);};
+async function autoFix(){
+  if(!S.apiKey) return;
+  const todo=S.items.filter(x=>x.bad&&!x.subs).slice(0,6);
+  for(const it of todo){
+    if(!(await findSub(S.items.indexOf(it),true))) break;
+    if(!it.subs||!it.subs.length){it.gone=true; continue;}
+    if(it.why==='explicit'){const c=it.subs.find(v=>/\b(clean|radio edit)\b/i.test(v.name)); if(c) useSub(S.items.indexOf(it),c);}
+  }
+  S.items=S.items.filter(x=>!x.gone); save(); resetQ(); render(); renderParent();
+}
 $('hp').onclick=()=>$('helpD').showModal();
 $('helpX').onclick=()=>$('helpD').close();
 
@@ -869,6 +914,7 @@ setInterval(()=>{
   try{if(!pReady) return; const d=player.getDuration(); $('fill').style.width=d?(player.getCurrentTime()/d*100)+'%':'0';}catch(e){}
 },500);
 paintShuf(); render(); setIcon(false);
+if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
 if(S.apiKey&&S.lastCheck!==today()) checkEmbeds(true);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
 if(limitHit()) showBreak();

@@ -105,6 +105,15 @@ summary{cursor:pointer;font-weight:600}
 .pk.sel img{box-shadow:0 0 0 4px var(--acc)}
 .pk.sel::after{content:'✓';position:absolute;top:4px;right:4px;background:var(--acc);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;font-weight:700}
 dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y:auto}
+#tools:empty{display:none}
+.tools{margin:-6px 0 14px}
+.tools select{font:inherit;padding:6px 10px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+.plus{right:auto;left:6px;font-weight:700;font-size:1.3rem}
+.qbox{grid-column:1/-1}
+.qrow{display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px dashed var(--line)}
+.qrow img{width:48px;height:48px;border-radius:10px;object-fit:cover}
+.qrow span{flex:1;min-width:0;line-height:1.2}
+.qrow button{width:40px;height:40px;border-radius:50%;border:0;background:var(--card2);font-size:1.05rem;padding:0}
 </style>
 </head>
 <body>
@@ -128,6 +137,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <div id="screen"><div id="yt"></div><div id="shield" title="Play or pause"></div></div>
   <h2 class="sec">What shall we play? 🎶</h2>
   <div id="tabs" class="tabs"></div>
+  <div id="tools" class="tools"></div>
   <section id="grid" aria-label="Music"></section>
   <p id="empty" hidden>No music here yet. Ask a grown-up to add some.</p>
 </main>
@@ -162,6 +172,7 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
     <li><b>Bouncy pink bars</b> show which song is playing.</li>
     <li>Tap the <b>🤍</b> on a song to keep it in <b>❤️ Favourites</b>.</li>
     <li>Tap <b>➕ New list</b> to make your own playlist from the songs here.</li>
+    <li>Tap the <b>＋</b> on a song to add it to the <b>🎧 Queue</b> or to one of your lists.</li>
     <li>If a song can’t play, YouthBox hides it and skips to the next one.</li>
     <li>When it says <b>Music break</b>, it’s time to do something else. See you tomorrow!</li>
   </ol>
@@ -184,6 +195,14 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
   <h2 id="pickT">Pick songs</h2>
   <div id="pickG"></div>
   <div class="row"><button id="pickX" class="btn">Done</button><button id="pickDel" class="btn alt">Delete list</button></div>
+</dialog>
+
+<dialog id="addD">
+  <h2 id="addT">Add song</h2>
+  <div class="row"><button id="addNext" class="btn">▶ Play next</button><button id="addQ" class="btn alt">➕ Add to queue</button></div>
+  <p class="msg">Add to a list (tap again to take it out):</p>
+  <div id="addLists" class="tabs"></div>
+  <div class="row"><button id="addNew" class="btn alt">➕ New list</button><button id="addX" class="btn">Done</button></div>
 </dialog>
 
 <dialog id="pinD">
@@ -266,7 +285,7 @@ const $=id=>document.getElementById(id);
   });
 })();
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
-const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:''};
+const DEF={pin:null,limit:60,items:[],used:{},shuffle:false,apiKey:'',favs:[],kp:[],lastCheck:'',q:[],sort:'added'};
 let S=load();
 function load(){try{return Object.assign({},DEF,JSON.parse(localStorage.getItem(KEY)||'{}'))}catch(e){return Object.assign({},DEF)}}
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
@@ -294,12 +313,60 @@ function parse(u){
 /* ---------- kid screen ---------- */
 let cur=-1, errs=0;
 let view='home';
-const inView=x=>view==='all'||view==='home'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
+const inView=x=>view==='all'||view==='home'||view==='q'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
 const ok=i=>{const x=S.items[i]; return !!x&&!x.bad&&inView(x);};
+const vis=()=>{
+  const r=S.items.map((x,i)=>i).filter(ok), sv=S.sort||'added', kl=S.kp.find(p=>p.id===view);
+  if(sv==='az'||sv==='za') r.sort((a,b)=>S.items[a].name.localeCompare(S.items[b].name,undefined,{sensitivity:'base'})*(sv==='za'?-1:1));
+  else{
+    const ref=kl?kl.songs:view==='fav'?S.favs:null;
+    if(ref) r.sort((a,b)=>ref.indexOf(S.items[a].id)-ref.indexOf(S.items[b].id));
+    if(sv==='new') r.reverse();
+  }
+  return r;
+};
+const mk=(t,fn,c)=>{const b=document.createElement('button'); b.className=c||'btn alt'; b.textContent=t; b.onclick=fn; return b;};
+function renderTools(){
+  const t=$('tools'); t.textContent='';
+  const l=document.createElement('label'), sel=document.createElement('select'); l.textContent='Sort: ';
+  [['added','As added'],['new','Newest first'],['az','A → Z'],['za','Z → A']].forEach(([v,n])=>{const o=document.createElement('option'); o.value=v; o.textContent=n; sel.append(o);});
+  sel.value=S.sort||'added'; sel.onchange=()=>{S.sort=sel.value; save(); resetQ(); render();};
+  l.append(sel); t.append(l);
+}
+function renderQueue(g){
+  const box=document.createElement('div'); box.className='qbox';
+  const cu=S.items[cur], np=document.createElement('p'); np.className='msg';
+  np.textContent=cu?'Now playing: '+cu.name:'Nothing playing yet.'; box.append(np);
+  const top=document.createElement('div'); top.className='row';
+  top.append(mk('➕ Add songs',()=>openPick({icon:'🎧',name:'Queue',songs:S.q,q:1})),mk('Clear queue',()=>{S.q.length=0; save(); render();}));
+  box.append(top);
+  const live=S.q.filter(id=>S.items.some(x=>x.id===id&&!x.bad));
+  if(!live.length){const e=document.createElement('p'); e.className='msg'; e.textContent='The queue is empty. Tap ＋ on a song, or ➕ Add songs.'; box.append(e);}
+  S.q.forEach((id,k)=>{
+    const it=S.items.find(x=>x.id===id&&!x.bad); if(!it) return;
+    const r=document.createElement('div'); r.className='qrow';
+    const im=new Image(); im.alt=''; im.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
+    const t=document.createElement('span'); t.textContent=it.name;
+    const sw=d=>{const j=k+d; if(j<0||j>=S.q.length) return; [S.q[k],S.q[j]]=[S.q[j],S.q[k]]; save(); render();};
+    r.append(im,t,
+      mk('▶',()=>{S.q.splice(k,1); save(); play(S.items.indexOf(it));},''),
+      mk('↑',()=>sw(-1),''), mk('↓',()=>sw(1),''),
+      mk('✕',()=>{S.q.splice(k,1); save(); render();},''));
+    box.append(r);
+  });
+  g.append(box);
+}
+function popQ(){
+  while(S.q.length){
+    const id=S.q.shift(), i=S.items.findIndex(x=>x.id===id&&!x.bad);
+    if(i>=0){save(); if(view==='q') setTimeout(render,0); return i;}
+  }
+  return null;
+}
 function renderTabs(){
   const t=$('tabs'); t.textContent='';
   const add=(label,v,fn)=>{const b=document.createElement('button'); b.className='chip'+(v===view?' sel':''); b.textContent=label; b.onclick=fn||(()=>{view=v; resetQ(); render();}); t.append(b);};
-  add(view.startsWith('g:')?'← Playlists':'📀 Playlists','home'); add('🎶 All songs','all'); add('❤️ Favourites','fav');
+  add(view.startsWith('g:')?'← Playlists':'📀 Playlists','home'); add('🎶 All songs','all'); add('❤️ Favourites','fav'); add('🎧 Queue'+(S.q.length?' ('+S.q.length+')':''),'q');
   S.kp.forEach(p=>add(p.icon+' '+p.name,p.id));
   add('➕ New list','',openNew);
   if(S.kp.some(p=>p.id===view)) add('✏️ Edit list','',openPick);
@@ -307,14 +374,15 @@ function renderTabs(){
 function toggleFav(id){S.favs=S.favs.includes(id)?S.favs.filter(x=>x!==id):[...S.favs,id]; save(); render();}
 function render(){
   if(view.startsWith('g:')){ if(!S.items.some(x=>!x.bad&&(x.group||'Songs')===view.slice(2))) view='home'; }
-  else if(!['home','all','fav'].includes(view)&&!S.kp.some(p=>p.id===view)) view='home';
+  else if(!['home','all','fav','q'].includes(view)&&!S.kp.some(p=>p.id===view)) view='home';
   renderTabs();
-  const g=$('grid'); g.textContent='';
+  const g=$('grid'); g.textContent=''; $('tools').textContent='';
+  if(view==='q'){renderQueue(g); $('empty').hidden=true; return;}
   if(view==='home'&&S.items.some(x=>x.group&&!x.bad)){
     const gs=new Map();
     S.items.forEach(x=>{
-      if(x.bad||x.type!=='song') return;
-      const n=x.group||'Songs'; if(!gs.has(n)) gs.set(n,{n,id:x.id,c:0}); gs.get(n).c++;
+      if(x.bad||x.type!=='song'||!x.group) return;
+      const n=x.group; if(!gs.has(n)) gs.set(n,{n,id:x.id,c:0}); gs.get(n).c++;
     });
     gs.forEach(o=>{
       const b=document.createElement('button'); b.className='tile';
@@ -326,11 +394,11 @@ function render(){
     $('empty').hidden=gs.size>0; $('empty').textContent='No music here yet. Ask a grown-up to add some.';
     return;
   }
+  renderTools();
   const grouped=false; let last=null, shown=0;
   if(view.startsWith('g:')){const h=document.createElement('h3'); h.className='grp'; h.textContent=view.slice(2); g.append(h);}
-  S.items.forEach((it,i)=>{
-    if(it.bad||!inView(it)) return;
-    shown++;
+  vis().forEach(i=>{
+    const it=S.items[i]; shown++;
     if(grouped){
       const lab=it.group||'Songs';
       if(lab!==last){const h=document.createElement('h3'); h.className='grp'; h.textContent=lab; g.append(h); last=lab;}
@@ -348,6 +416,8 @@ function render(){
       h.className='heart'; h.textContent=f?'❤️':'🤍'; h.setAttribute('aria-pressed',f?'true':'false');
       h.setAttribute('aria-label',(f?'Remove from favourites: ':'Add to favourites: ')+it.name);
       h.onclick=()=>toggleFav(it.id); cell.append(h);
+      const pl=document.createElement('button'); pl.className='heart plus'; pl.textContent='＋';
+      pl.setAttribute('aria-label','Add to queue or a list: '+it.name); pl.onclick=()=>openAdd(it); cell.append(pl);
     }
     g.append(cell);
   });
@@ -394,22 +464,17 @@ function play(i,fromPrev){
 }
 function inList(){const it=S.items[cur]; return it&&it.type==='list';}
 function nextIdx(){
-  const n=S.items.length;
-  if(!S.shuffle||n<2) return (cur+1)%n;
-  if(!bag.length){
-    bag=[...Array(n).keys()].filter(i=>i!==cur&&ok(i));
-    for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]];}
+  const v=vis(); if(!v.length) return null;
+  if(S.shuffle&&v.length>1){
+    if(!bag.length){
+      bag=v.filter(i=>i!==cur);
+      for(let i=bag.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1)); [bag[i],bag[j]]=[bag[j],bag[i]];}
+    }
+    return bag.pop();
   }
-  return bag.pop();
+  const k=v.indexOf(cur); return v[(k+1)%v.length];
 }
-function nextPlayable(){
-  const n=S.items.length;
-  for(let t=0;t<n;t++){
-    const i=(S.shuffle&&n>1)?nextIdx():(cur+1+t)%n;
-    if(ok(i)&&i!==cur) return i;
-  }
-  return (S.items[cur]&&!S.items[cur].bad)?cur:null;
-}
+function nextPlayable(){const q=popQ(); return q!==null?q:nextIdx();}
 function nextBtn(){
   if(!S.items.length) return;
   if(inList()){try{if(player.getPlaylistIndex()<player.getPlaylist().length-1){player.nextVideo(); return;}}catch(e){}}
@@ -419,11 +484,10 @@ function prevBtn(){
   if(!S.items.length) return;
   if(inList()){try{if(player.getPlaylistIndex()>0){player.previousVideo(); return;}}catch(e){}}
   if(S.shuffle&&hist.length) return play(hist.pop(),true);
-  const n=S.items.length;
-  for(let t=1;t<=n;t++){const i=(cur-t+n*2)%n; if(ok(i)){play(i,true); return;}}
+  const v=vis(); if(!v.length) return; const k=v.indexOf(cur); play(v[k<=0?v.length-1:k-1],true);
 }
 function toggle(){
-  if(cur<0){const f=S.items.findIndex((x,i)=>ok(i)); if(f>=0) play(f); return;}
+  if(cur<0){const v=vis(); if(v.length) play(v[0]); return;}
   if(!pReady) return;
   player.getPlayerState()===1?player.pauseVideo():player.playVideo();
 }
@@ -714,7 +778,9 @@ $('subAll').onclick=async()=>{
 
 /* ---------- kids' lists ---------- */
 const ICONS=['🎵','🐶','🦄','🚀','🌈','🐸','🎈','🦖']; let icoSel=ICONS[0];
-function openNew(){
+let pendingSong=null;
+function openNew(pre){
+  pendingSong=typeof pre==='string'?pre:null;
   const w=$('kpIcons'); w.textContent=''; icoSel=ICONS[0];
   ICONS.forEach(ic=>{
     const b=document.createElement('button'); b.textContent=ic; b.className=ic===icoSel?'sel':'';
@@ -724,11 +790,14 @@ function openNew(){
 }
 $('kpOk').onclick=()=>{
   const p={id:'k'+Date.now().toString(36),name:$('kpName').value.trim().slice(0,24)||'My list',icon:icoSel,songs:[]};
-  S.kp.push(p); save(); view=p.id; resetQ(); $('kpD').close(); render(); openPick();
+  S.kp.push(p);
+  if(pendingSong){p.songs.push(pendingSong); pendingSong=null; save(); $('kpD').close(); render(); return;}
+  save(); view=p.id; resetQ(); $('kpD').close(); render(); openPick();
 };
 $('kpNo').onclick=()=>$('kpD').close();
-function openPick(){
-  const p=S.kp.find(x=>x.id===view); if(!p) return;
+function openPick(tg){
+  const p=(tg&&tg.songs)?tg:S.kp.find(x=>x.id===view); if(!p) return;
+  $('pickDel').hidden=!!p.q;
   $('pickT').textContent=p.icon+' '+p.name+': tap songs to add';
   const g=$('pickG'); g.textContent='';
   S.items.filter(x=>x.type==='song'&&!x.bad).forEach(x=>{
@@ -746,6 +815,24 @@ $('pickDel').onclick=()=>{
   if(!confirm('Delete this list? The songs stay in YouthBox.')) return;
   S.kp=S.kp.filter(x=>x.id!==view); save(); view='all'; $('pickD').close();
 };
+/* ---------- add a song to the queue or a list ---------- */
+let addId=null;
+function openAdd(it){
+  addId=it.id; $('addT').textContent='Add “'+it.name+'”';
+  const w=$('addLists'); w.textContent='';
+  if(!S.kp.length){const m=document.createElement('span'); m.className='msg'; m.textContent='No lists yet.'; w.append(m);}
+  S.kp.forEach(p=>{
+    const b=document.createElement('button'); b.className='chip'+(p.songs.includes(it.id)?' sel':''); b.textContent=p.icon+' '+p.name;
+    b.onclick=()=>{const k=p.songs.indexOf(it.id); if(k<0) p.songs.push(it.id); else p.songs.splice(k,1); b.classList.toggle('sel',k<0); save();};
+    w.append(b);
+  });
+  $('addD').showModal();
+}
+$('addNext').onclick=()=>{S.q=S.q.filter(x=>x!==addId); S.q.unshift(addId); save(); $('addD').close();};
+$('addQ').onclick=()=>{S.q=S.q.filter(x=>x!==addId); S.q.push(addId); save(); $('addD').close();};
+$('addNew').onclick=()=>{const id=addId; $('addD').close(); openNew(id);};
+$('addX').onclick=()=>$('addD').close();
+$('addD').addEventListener('close',()=>render());
 $('hp').onclick=()=>$('helpD').showModal();
 $('helpX').onclick=()=>$('helpD').close();
 

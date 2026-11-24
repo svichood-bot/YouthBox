@@ -344,6 +344,11 @@ body.lvshow #cover{display:none!important}
 </dialog>
 
 <dialog id="parD">
+  <h2>Song requests 🙋</h2>
+  <ul id="askL"></ul>
+  <ul id="reqL"></ul>
+  <p id="reqMsg" class="msg"></p>
+  <hr>
   <h2>Add music</h2>
   <label for="url">YouTube or YouTube Music link (one song, or a playlist)</label>
   <input id="url" placeholder="https://music.youtube.com/watch?v=…">
@@ -364,18 +369,6 @@ body.lvshow #cover{display:none!important}
     <div class="row"><button id="saveKey" class="btn alt">Save key</button></div>
     <p id="keyMsg" class="msg"></p>
   </details>
-  <h2>In the library</h2>
-  <ul id="plist"></ul>
-  <div class="row"><button id="remBad" class="btn alt">Remove songs that won’t play</button><button id="retry" class="btn alt">Try them again</button></div>
-  <div class="row"><button id="enrichBtn" class="btn alt">Look up artists &amp; albums</button></div>
-  <p id="enrMsg" class="msg"></p>
-  <div class="row"><button id="chk" class="btn alt">Check songs now</button><button id="subAll" class="btn alt">Find replacements</button><button id="syncNow" class="btn alt">Refresh playlists</button></div>
-  <p class="msg">Songs that can’t play are hidden from the kids automatically. Checking and finding replacements needs the YouTube key.</p>
-  <hr>
-  <h2>Song requests 🙋</h2>
-  <ul id="askL"></ul>
-  <ul id="reqL"></ul>
-  <p id="reqMsg" class="msg"></p>
   <hr>
   <h2>Kids’ lists</h2>
   <ul id="kpl"></ul>
@@ -409,8 +402,16 @@ body.lvshow #cover{display:none!important}
     <button id="saveLim" class="btn">Save limit</button>
     <button id="resetUsed" class="btn alt">Reset today’s time</button>
     <button id="chPin" class="btn alt">Change PIN</button>
-    <button id="parX" class="btn alt">Close</button>
   </div>
+  <hr>
+  <h2>In the library</h2>
+  <ul id="plist"></ul>
+  <div class="row"><button id="remBad" class="btn alt">Remove songs that won’t play</button><button id="retry" class="btn alt">Try them again</button></div>
+  <div class="row"><button id="enrichBtn" class="btn alt">Look up artists &amp; albums</button></div>
+  <p id="enrMsg" class="msg"></p>
+  <div class="row"><button id="chk" class="btn alt">Check songs now</button><button id="subAll" class="btn alt">Find replacements</button><button id="syncNow" class="btn alt">Refresh playlists</button></div>
+  <p class="msg">Songs that can’t play are hidden from the kids automatically. Checking and finding replacements needs the YouTube key.</p>
+  <div class="row"><button id="parX" class="btn alt">Close</button></div>
 </dialog>
 
 <script>
@@ -436,7 +437,7 @@ const $=id=>document.getElementById(id);
   addEventListener('popstate',()=>{
     if(ignore>0){ignore--; return;}
     const d=stack[stack.length-1]; if(d){viaBack=true; d.close(); return;}
-    if(window.navPop) window.navPop();
+    if(window.navPop) window.navPop(history.state);
   });
 })();
 const KEY='tunebox_v1', COL=['#ff8fa3','#6ee7c8','#8ab4ff','#ffd166'];
@@ -1046,7 +1047,7 @@ $('pickX').onclick=()=>$('pickD').close();
 $('pickD').addEventListener('close',()=>{resetQ(); render();});
 $('pickDel').onclick=()=>{
   if(!confirm('Delete this list? The songs stay in YouthBox.')) return;
-  S.kp=S.kp.filter(x=>x.id!==view); save(); view='all'; $('pickD').close();
+  S.kp=S.kp.filter(x=>x.id!==view); save(); view='all'; if(vstack.length) vstack[vstack.length-1]='all'; $('pickD').close();
 };
 /* ---------- add a song to the queue or a list ---------- */
 let addId=null;
@@ -1166,12 +1167,21 @@ function renderNav(){
   nb.append(mk(bk[0],()=>nav(bk[1]),'chip'),t);
 }
 function setView(v){view=v; resetQ(); render(); window.scrollTo(0,0);}
+/* Each screen the kid opens adds one history entry (depth d), so Back steps up one screen */
+let vstack=[];
 function nav(v){
   if(v===view) return;
-  if(v==='home'){ if(inHist) history.back(); else setView('home'); return; }
-  if(view==='home'&&!inHist){history.pushState({v:1},''); inHist=true;}
+  if(v==='home'){
+    if(vstack.length){ history.go(-vstack.length); } else setView('home');
+    return;
+  }
+  vstack.push(v); history.pushState({d:vstack.length},'');
   setView(v);
 }
+/* Search gets its own history entry so Back clears it first */
+let srHist=false;
+function srPush(){ if(!srHist){ srHist=true; history.pushState({sr:1,d:vstack.length},''); } }
+function srClear(){ $('srch').value=''; qs=''; resetQ(); render(); moreErr=''; clearTimeout(st); renderMore(); }
 function openSheet(){
   if(shOpen) return; shOpen=true;
   $('sheet').classList.add('open'); $('sheet').setAttribute('aria-hidden','false');
@@ -1190,10 +1200,12 @@ function paintQClosed(){
 }
 function closeQ(){if(qOpen) history.back();}
 $('qback').onclick=closeQ; $('qbtn2').onclick=closeQ;
-window.navPop=()=>{
+window.navPop=(state)=>{
   if(qOpen){paintQClosed(); return;}
   if(shOpen){paintSheetClosed(); return;}
-  if(view!=='home'){inHist=false; setView('home');}
+  if(srHist){ srHist=false; if(qs||$('srch').value) srClear(); return; }
+  const d=(state&&typeof state.d==='number')?state.d:0;
+  if(d<vstack.length){ vstack.length=d; setView(vstack[d-1]||'home'); }
 };
 function renderQ(){
   const w=$('qList'); w.textContent=''; renderQueue(w);
@@ -1301,7 +1313,7 @@ function badge(){const n=S.ask.filter(a=>a.st==='p').length+S.req.length; $('gu'
 const reqRes={};
 function toast(m){const t=$('toast'); t.textContent=m; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>{t.hidden=true;},3200);}
 $('srch').oninput=()=>{
-  qs=$('srch').value.trim().toLowerCase(); resetQ(); render(); moreErr=''; clearTimeout(st);
+  qs=$('srch').value.trim().toLowerCase(); if(qs) srPush(); resetQ(); render(); moreErr=''; clearTimeout(st);
   if(S.apiKey&&qs.length>=2){const q=qs; st=setTimeout(()=>moreSearch(q),700);}
   renderMore();
 };

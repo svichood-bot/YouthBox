@@ -274,14 +274,25 @@ hr{border-top-color:#f0d9b5}
 .qrow.cur{background:#fbe7a8;border:2px solid #2f8f87;border-radius:18px}
 #qbtn2{background:var(--cream);border:2px solid var(--dt)}
 @media(max-width:480px){h1{font-size:2.2rem;-webkit-text-stroke-width:5px}.logo svg{height:84px;width:auto}.sec{font-size:1.9rem}main{padding:18px 14px 150px}}
-.logo img.mascot{height:104px;width:auto;flex:none;filter:drop-shadow(0 3px 0 rgba(15,79,75,.25))}
+.logo img.mascot{height:108px;width:auto;flex:none;filter:drop-shadow(0 3px 0 rgba(15,79,75,.25))}
 @media(max-width:480px){.logo img.mascot{height:88px}}
+#seekRow{flex:none;margin:0 14px 10px;padding:8px 14px 10px;background:var(--cream);border:3px solid var(--coral);border-radius:26px}
+.sk{display:flex;align-items:center;gap:10px;font-weight:600;font-size:.95rem;font-variant-numeric:tabular-nums;color:var(--ink)}
+.sk span{min-width:2.6em;text-align:center}
+#seek{--p:0%;-webkit-appearance:none;appearance:none;flex:1;width:auto;min-width:0;height:32px;margin:0;padding:0;border:0;background:transparent;touch-action:pan-y}
+#seek::-webkit-slider-runnable-track{height:10px;border-radius:6px;background:linear-gradient(90deg,var(--coral) var(--p),#f0d9b5 var(--p))}
+#seek::-webkit-slider-thumb{-webkit-appearance:none;width:28px;height:28px;margin-top:-9px;border-radius:50%;background:var(--sun);border:3px solid var(--dt)}
+#seek::-moz-range-track{height:10px;border-radius:6px;background:#f0d9b5}
+#seek::-moz-range-progress{height:10px;border-radius:6px;background:var(--coral)}
+#seek::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--sun);border:3px solid var(--dt)}
+.skb{display:flex;justify-content:center;gap:8px;margin-top:4px;flex-wrap:wrap}
+.skb .chip{padding:5px 14px;font-size:.95rem}
 </style>
 </head>
 <body>
 <header>
   <div class="logo">
-    <img src="logo.png" alt="" class="mascot" width="96" height="99">
+    <img src="logo.png" alt="" class="mascot" width="123" height="104">
     <h1>Youth<span>Box</span></h1>
   </div>
   <div class="hbtns"><button id="hp" class="chip">Help</button><button id="gu" class="chip">Grown-ups</button></div>
@@ -305,6 +316,10 @@ hr{border-top-color:#f0d9b5}
     <div id="lyrics"></div>
     <div id="lyAdj" hidden><span>Lyrics timing:</span><button id="lyEar" class="chip">⏪ Earlier</button><b id="lyOff">0s</b><button id="lyLat" class="chip">Later ⏩</button></div>
     <div id="qList"></div>
+  </div>
+  <div id="seekRow">
+    <div class="sk"><span id="tEl">0:00</span><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Song position"><span id="tDur">0:00</span></div>
+    <div class="skb"><button id="skBack" class="chip" aria-label="Back 10 seconds">⏪ 10s</button><button id="rep" class="chip">🔁 Repeat all</button><button id="skFwd" class="chip" aria-label="Forward 10 seconds">10s ⏩</button></div>
   </div>
 </div>
 <div id="qwrap" aria-hidden="true">
@@ -795,7 +810,9 @@ function onState(e){
   if(playing){errs=0; startTick(); if(mutedKick){mutedKick=false; setTimeout(()=>{try{player.unMute();}catch(x){}},400);}} else stopTick();
   if(playing&&LY.st==='load') loadLyrics();
   if(e.data===0){
+    if(S.repeat==='one'){try{player.seekTo(0,true); player.playVideo();}catch(x){} return;}
     if(inList()){try{if(player.getPlaylistIndex()<player.getPlaylist().length-1) return;}catch(x){}}
+    if(S.repeat==='off'&&!S.q.length) return;
     nextBtn();
   }
 }
@@ -1756,6 +1773,32 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   });
 }
 if(limitHit()) showBreak();
+
+/* ---------- seek bar + repeat ---------- */
+{
+  const fmt=t=>{t=Math.max(0,Math.floor(t||0)); return Math.floor(t/60)+':'+String(t%60).padStart(2,'0');};
+  const sk=$('seek'); let drag=false;
+  const paintSk=p=>sk.style.setProperty('--p',p+'%');
+  const dur=()=>{try{return pReady&&cur>=0?(player.getDuration()||0):0;}catch(e){return 0;}};
+  const pos=()=>{try{return pReady?(player.getCurrentTime()||0):0;}catch(e){return 0;}};
+  function tickSk(){
+    if(drag) return; const d=dur(), t=pos();
+    sk.value=d?Math.round(t/d*1000):0; paintSk(d?t/d*100:0);
+    $('tEl').textContent=fmt(t); $('tDur').textContent=d?fmt(d):'0:00';
+  }
+  setInterval(tickSk,500);
+  sk.addEventListener('input',()=>{drag=true; paintSk(sk.value/10); $('tEl').textContent=fmt(sk.value/1000*dur());});
+  sk.addEventListener('change',()=>{const d=dur(); if(d){try{player.seekTo(sk.value/1000*d,true);}catch(e){}} setTimeout(()=>{drag=false; tickSk();},250);});
+  ['touchstart','touchmove','touchend'].forEach(ev=>$('seekRow').addEventListener(ev,e=>e.stopPropagation(),{passive:true}));
+  const jump=s=>{const d=dur(); if(!d) return; try{player.seekTo(Math.min(d-.5,Math.max(0,pos()+s)),true);}catch(e){} tickSk();};
+  $('skBack').onclick=()=>jump(-10); $('skFwd').onclick=()=>jump(10);
+  const RL={all:'🔁 Repeat all',one:'🔂 Repeat song',off:'➡️ No repeat'};
+  function paintRep(){const m=S.repeat||'all'; $('rep').textContent=RL[m]; $('rep').classList.toggle('sel',m==='one');}
+  $('rep').onclick=()=>{S.repeat=({all:'one',one:'off',off:'all'})[S.repeat||'all']; save(); paintRep(); toast(RL[S.repeat]);};
+  paintRep();
+  /* tap anywhere on the mini player (not its buttons) to open the full player */
+  $('barIn').addEventListener('click',e=>{if(!e.target.closest('button')) openSheet();});
+}
 </script>
 </body>
 </html>

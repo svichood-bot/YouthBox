@@ -467,7 +467,9 @@ hr{border-top-color:#f0d9b5}
   <p id="bkMsg" class="msg"></p>
   <div id="ytLinks"></div>
   <hr>
-  <label style="display:flex;gap:10px;align-items:center;margin:0 0 4px"><input id="hideVid" type="checkbox" style="width:auto;margin:0"> Hide the video (show a picture instead)</label>
+  <label style="display:flex;gap:10px;align-items:center;margin:0 0 4px"><input id="autoRm" type="checkbox" style="width:auto;margin:0"> Automatically remove songs that won’t play</label>
+  <p class="msg">On by default. Songs that can’t play in apps are taken out of the library and kept out. Turn this off if you would rather pick replacements yourself.</p>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="hideVid" type="checkbox" style="width:auto;margin:0"> Hide the video (show a picture instead)</label>
   <p class="msg">Leave this on for kids. Turn it off to see the video, for example to tap “Skip ad” yourself.</p>
   <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="skipWin" type="checkbox" style="width:auto;margin:0"> Leave a small window for YouTube’s “Skip ad” button</label>
   <p class="msg">Off by default, so the picture covers the whole box. Only turn this on if you have ads and need to tap Skip. It shows a small piece of the video in the bottom-right corner.</p>
@@ -826,7 +828,7 @@ function onErr(e){
     it.lv=0; save(); LY.st='none'; document.body.classList.remove('lvshow');
     try{player.loadVideoById(it.id);}catch(x){} paintLyr(); return;
   }
-  if(it&&it.type==='song'&&[2,100,101,150].includes(c)){it.bad=true; save(); render();}
+  if(it&&it.type==='song'&&[2,100,101,150].includes(c)){it.bad=true; save(); render(); if(autoOn()) setTimeout(purgeBad,4000);}
   $('now').textContent='“'+(it?it.name:'That song')+'” can’t play here. Skipping…';
   if(++errs>25) return;
   if(it&&it.type==='list'){setTimeout(nextBtn,1200); return;}
@@ -1026,6 +1028,17 @@ $('add').onclick=async()=>{
 };
 $('saveKey').onclick=()=>{S.apiKey=$('apiKey').value.trim(); save(); $('keyMsg').textContent=S.apiKey?'Key saved. Now try adding the playlist again.':'Key removed.';};
 const bury=id=>{S.dead=S.dead||[]; if(id&&!S.dead.includes(id)) S.dead.push(id);};
+const autoOn=()=>S.autoRm!==false;
+function purgeBad(){
+  const here=cur>=0?S.items[cur]:null;
+  const dead=S.items.filter(x=>x.type==='song'&&x.bad&&x!==here);
+  if(!dead.length) return 0;
+  dead.forEach(x=>bury(x.id));
+  S.items=S.items.filter(x=>!dead.includes(x));
+  cur=here?S.items.indexOf(here):-1;
+  save(); resetQ(); render(); renderParent();
+  return dead.length;
+}
 $('remBad').onclick=()=>{
   const n=S.items.filter(x=>x.bad).length;
   S.items.filter(x=>x.bad).forEach(x=>bury(x.id));
@@ -1068,8 +1081,9 @@ async function checkEmbeds(quiet){
       });
     }
     S.lastCheck=today(); save(); resetQ(); render(); renderParent();
-    if(bad) autoFix();
-    if(!quiet) $('addMsg').textContent=bad?bad+' more song'+(bad===1?'':'s')+' can’t play in apps and '+(bad===1?'is':'are')+' now hidden.':'All songs look fine.';
+    const rm=autoOn()?purgeBad():0;
+    if(!rm&&bad) autoFix();
+    if(!quiet) $('addMsg').textContent=bad?(rm?'Removed '+rm+' song'+(rm===1?'':'s')+' that can’t play in apps.':bad+' more song'+(bad===1?'':'s')+' can’t play in apps and '+(bad===1?'is':'are')+' now hidden.'):'All songs look fine.';
   }catch(e){if(!quiet) $('addMsg').textContent='Couldn’t check: '+e.message;}
   return bad;
 }
@@ -1234,6 +1248,7 @@ setInterval(()=>{
 },500);
 function paintVid(){document.body.classList.toggle('hidevid',S.hideVid!==false); $('hideVid').checked=S.hideVid!==false; document.body.classList.toggle('skipwin',!!S.skipWin); $('skipWin').checked=!!S.skipWin;}
 $('skipWin').onchange=()=>{S.skipWin=$('skipWin').checked; save(); paintVid();};
+$('autoRm').checked=autoOn(); $('autoRm').onchange=()=>{S.autoRm=$('autoRm').checked; save(); if(S.autoRm) purgeBad();};
 $('hideVid').onchange=()=>{S.hideVid=$('hideVid').checked; save(); paintVid();};
 /* ---------- lock-screen / notification controls ---------- */
 function setSession(it){
@@ -1769,6 +1784,7 @@ $('enrichBtn').onclick=async()=>{
 
 paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy();
 if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
+if(autoOn()) purgeBad();
 if(S.apiKey&&S.lastCheck!==today()) checkEmbeds(true);
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});

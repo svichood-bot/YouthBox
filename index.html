@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
-<link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns='http://www.w3.org/2000/svg'%20viewBox='0%200%2048%2048'%3E%3Crect%20x='4'%20y='6'%20width='40'%20height='38'%20rx='12'%20fill='%23ffd166'%20stroke='%233b1228'%20stroke-width='2.4'%20transform='rotate(-4%2024%2025)'/%3E%0A%3Cg%20transform='rotate(-4%2024%2025)'%3E%0A%3Ccircle%20cx='15'%20cy='24'%20r='3.2'%20fill='%233b1228'/%3E%3Ccircle%20cx='14'%20cy='23'%20r='1'%20fill='%23fff'/%3E%0A%3Cellipse%20cx='31'%20cy='25'%20rx='3.6'%20ry='3'%20fill='%233b1228'%20transform='rotate(-20%2031%2025)'/%3E%0A%3Cpath%20d='M34.2%2024V11c.4%204%203.6%204.4%205.2%207.2'%20fill='none'%20stroke='%233b1228'%20stroke-width='2.2'%20stroke-linecap='round'%20stroke-linejoin='round'/%3E%0A%3Cpath%20d='M12%2031c3%208%2021%208%2024%200'%20fill='none'%20stroke='%233b1228'%20stroke-width='2.6'%20stroke-linecap='round'/%3E%0A%3Ccircle%20cx='9'%20cy='29'%20r='2.3'%20fill='%23ff7eb6'%20opacity='.8'/%3E%3Ccircle%20cx='39'%20cy='29'%20r='2.3'%20fill='%23ff7eb6'%20opacity='.8'/%3E%0A%3C/g%3E%3C/svg%3E">
-<meta name="theme-color" content="#ffc4dd">
+<link rel="icon" type="image/png" href="favicon.png">
+<meta name="theme-color" content="#3a9e91">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="YouthBox">
 <title>YouthBox</title>
-<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Lobster&display=swap" rel="stylesheet">
 <style>
 :root{--bg:#ffc4dd;--ink:#3b1228;--card:#fff4f9;--card2:#ffe0ee;--line:#f08ab5;--acc:#ff5aa5;--accd:#c01868;--mint:#6ee7c8;--sun:#ffd166;--sky:#2a8fd6;--mut:#8a3a63}
 *{box-sizing:border-box}
@@ -202,28 +202,93 @@ body.qup #qbtn{visibility:hidden}
 #coverL p.cc{font-size:1.3rem;color:var(--ink);opacity:1;font-weight:700;-webkit-line-clamp:3}
 body.lvshow #cover{display:none!important}
 @media(prefers-reduced-motion:reduce){#lyrics p{transition:none}#lyrics p.now{transform:none}}
+/* ===== YouthBox retro theme ===== */
+:root{--bg:#3a9e91;--ink:#2b1d1a;--card:#fff8ea;--card2:#f9e4c4;--line:#e8a090;--acc:#f4806f;--accd:#b8392f;--mint:#8fd6c4;--sun:#f6c445;--sky:#1b7f8c;--mut:#6b5a4e;--cream:#fdf1dc;--dt:#0f4f4b;--coral:#ef6f61;--script:"Lobster","Pacifico",cursive}
+body{padding-bottom:0;background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.08) 0 2px,transparent 3px) 0 0/34px 34px,var(--bg)}
+header{position:relative;padding:62px 20px 6px;max-width:1100px;margin:0 auto}
+header::before{content:"";position:absolute;inset:0;pointer-events:none;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f6c445' d='M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z'/%3E%3C/svg%3E") 6% 24px/34px no-repeat,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23fdf1dc' d='M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z'/%3E%3C/svg%3E") 54% 8px/40px no-repeat,url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23f6c445' d='M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z'/%3E%3C/svg%3E") 94% 120px/24px no-repeat}
+.hbtns{position:absolute;top:16px;right:18px;margin:0}
+.logo{position:relative;gap:6px;align-items:flex-end}
+.logo svg{width:auto;height:98px;flex:none}
+h1{position:relative;isolation:isolate;font-family:var(--script);font-weight:400;font-size:2.7rem;line-height:1.1;padding:2px 18px 6px 14px;color:var(--cream);-webkit-text-stroke:6px var(--dt);paint-order:stroke fill;letter-spacing:.01em}
+h1 span{color:inherit}
+h1::before{content:"";position:absolute;z-index:-1;inset:8px -6px 4px -8px;background:var(--dt);border-radius:30px 40px 40px 30px / 50% 60% 60% 50%;transform:rotate(-3deg)}
+h1::after{content:"";position:absolute;z-index:-2;left:6px;right:-26px;bottom:-12px;height:28px;background:var(--coral);clip-path:polygon(0 0,88% 0,100% 55%,88% 100%,0 100%,10% 50%);transform:rotate(-2deg)}
+.chip{background:var(--card);border:2px solid var(--coral);color:var(--ink);font-weight:500;padding:6px 18px;box-shadow:0 2px 0 rgba(15,79,75,.18)}
+.chip:hover{background:#fff}
+.chip.sel{background:var(--dt);border-color:var(--dt);color:var(--cream)}
+main{position:relative;background:var(--cream);border-radius:38px 38px 0 0;max-width:1100px;margin:6px auto 0;padding:20px 18px 150px;min-height:calc(100vh - 170px)}
+.sec{font-family:var(--script);font-weight:400;font-size:2.1rem;line-height:1.15;color:var(--dt);margin:6px 0 14px 4px}
+#srch{width:100%;border:2px solid var(--dt);border-radius:999px;background:var(--card) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%232b1d1a' stroke-width='2.4' stroke-linecap='round'%3E%3Ccircle cx='10' cy='10' r='6.5'/%3E%3Cpath d='M15 15l6 6'/%3E%3C/svg%3E") 18px center/24px no-repeat;padding:12px 18px 12px 52px;margin:0 0 16px}
+#navbar{background:linear-gradient(var(--cream) 78%,transparent)}
+h3.grp,#navbar span{color:var(--dt)}
+.tabs{gap:10px}
+.art{border-radius:24px;background:var(--card);box-shadow:0 4px 0 rgba(15,79,75,.18)}
+.tile.on .art{box-shadow:0 0 0 4px var(--coral)}
+.tile.on span{color:var(--accd)}
+.tile.gt{position:relative;border-radius:26px;overflow:hidden;box-shadow:0 4px 0 rgba(15,79,75,.2)}
+.tile.gt .art{border-radius:0;aspect-ratio:1/1.08;box-shadow:none;display:block}
+.tile.gt .art svg{width:100%;height:100%;display:block}
+.tile.gt:hover .art{transform:none}
+.tile.gt span{position:absolute;left:0;right:0;bottom:0;padding:8px 6px 9px;text-align:center;border-radius:20px 20px 0 0;font-size:1.35rem;line-height:1.05;background:#f8b8b0}
+.tile.gt span b{display:block;font-weight:600;font-size:1.3rem}
+.tile.gt span small{display:block;font-size:.98rem;font-weight:400;margin-top:2px}
+.tile.gt[data-k="0"] .art{background:repeating-conic-gradient(#f9c1b6 0 9deg,#f6a79a 9deg 18deg)}
+.tile.gt[data-k="1"] .art{background:#2f8f87}.tile.gt[data-k="1"] span{background:#c3dccd}
+.tile.gt[data-k="2"] .art{background:#2c3b63}.tile.gt[data-k="2"] span{background:#d3bfdc}
+.tile.gt[data-k="3"] .art{background:#f9cf5a}.tile.gt[data-k="3"] span{background:#f9c4aa}
+.heart{background:rgba(253,241,220,.95)}
+#bar{left:10px;right:10px;bottom:calc(8px + env(safe-area-inset-bottom,0px));padding:0 12px;border:2.5px solid #2f8f87;border-radius:30px;background:var(--cream);box-shadow:0 6px 0 rgba(15,79,75,.25)}
+#prog{left:26px;right:26px;top:0;height:4px;background:#f0d9b5;border-radius:4px}
+#fill{background:linear-gradient(90deg,var(--coral),var(--sun),#2f8f87);border-radius:4px}
+#barArt{border-radius:16px;background:var(--coral)}
+#ctl button:hover{background:var(--card2)}
+#ctl button.big{background:var(--coral);color:var(--cream);box-shadow:0 4px 0 #b8392f;width:62px;height:62px}
+#ctl button.big:hover{background:#f58475}
+#ctl button.big:active{box-shadow:0 1px 0 #b8392f}
+#ctl button.tog[aria-pressed="true"]{background:var(--sun)}
+dialog{background:var(--cream);border:3px solid #2f8f87;border-radius:28px}
+dialog::backdrop{background:rgba(15,79,75,.55)}
+dialog h2,#brk h2{font-family:var(--script);font-weight:400;color:var(--dt)}
+dialog h2{font-size:1.7rem}
+input{border:2px solid var(--dt);background:var(--card)}
+.btn{background:var(--acc);border:2px solid var(--dt);font-weight:600}
+.btn.alt{background:var(--card)}
+hr{border-top-color:#f0d9b5}
+#plist li,#kpl li,#askL li,#reqL li,.qrow,.mrow{border-bottom-color:#e8c9a8}
+#toast{background:var(--dt);color:var(--cream)}
+#brk{background:radial-gradient(700px 500px at 50% 0,#f9cf5a,var(--bg))}
+/* player */
+#shHead .grab,.grab{background:rgba(253,241,220,.6)}
+#screen{background:var(--cream);box-shadow:0 0 0 5px var(--coral)}
+#cover{background:var(--cream);color:var(--ink)}
+#cover.ly #coverT,#coverL p{color:var(--mut)}
+#coverL p.cc{color:var(--ink);font-size:1.45rem}
+#lyrics{background:var(--cream);border:4px solid var(--coral);border-radius:34px;color:var(--ink)}
+#lyrics p.now{font-size:1.5em;line-height:1.1}
+#sheet,#qpanel{background:radial-gradient(circle at 20% 30%,rgba(255,255,255,.08) 0 2px,transparent 3px) 0 0/34px 34px,var(--bg)}
+/* queue */
+#qTitle h2{display:inline-block;margin:0 0 12px 20px;padding:4px 44px 8px 26px;font-family:var(--script);font-weight:400;font-size:2.1rem;line-height:1.1;color:var(--cream);background:var(--coral);clip-path:polygon(0 0,92% 0,100% 50%,92% 100%,0 100%,5% 50%)}
+#qBody{margin:0 14px 18px;padding:14px 14px 10px;background:var(--cream);border-radius:30px;flex:1 1 0}
+.qrow button{background:var(--card2);border:2px solid #e9a58f}
+.qrow.cur{background:#fbe7a8;border:2px solid #2f8f87;border-radius:18px}
+#qbtn2{background:var(--cream);border:2px solid var(--dt)}
+@media(max-width:480px){h1{font-size:2.2rem;-webkit-text-stroke-width:5px}.logo svg{height:84px;width:auto}.sec{font-size:1.9rem}main{padding:18px 14px 150px}}
+.logo img.mascot{height:104px;width:auto;flex:none;filter:drop-shadow(0 3px 0 rgba(15,79,75,.25))}
+@media(max-width:480px){.logo img.mascot{height:88px}}
 </style>
 </head>
 <body>
 <header>
   <div class="logo">
-    <svg viewBox="0 0 48 48" aria-hidden="true">
-<rect x="4" y="6" width="40" height="38" rx="12" fill="#ffd166" stroke="#3b1228" stroke-width="2.4" transform="rotate(-4 24 25)"/>
-<g transform="rotate(-4 24 25)">
-<circle cx="15" cy="24" r="3.2" fill="#3b1228"/><circle cx="14" cy="23" r="1" fill="#fff"/>
-<ellipse cx="31" cy="25" rx="3.6" ry="3" fill="#3b1228" transform="rotate(-20 31 25)"/>
-<path d="M34.2 24V11c.4 4 3.6 4.4 5.2 7.2" fill="none" stroke="#3b1228" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-<path d="M12 31c3 8 21 8 24 0" fill="none" stroke="#3b1228" stroke-width="2.6" stroke-linecap="round"/>
-<circle cx="9" cy="29" r="2.3" fill="#ff7eb6" opacity=".8"/><circle cx="39" cy="29" r="2.3" fill="#ff7eb6" opacity=".8"/>
-</g>
-    </svg>
+    <img src="logo.png" alt="" class="mascot" width="96" height="99">
     <h1>Youth<span>Box</span></h1>
   </div>
   <div class="hbtns"><button id="hp" class="chip">Help</button><button id="gu" class="chip">Grown-ups</button></div>
 </header>
 <main>
-  <h2 class="sec">What shall we play? 🎶</h2>
-  <input id="srch" type="search" placeholder="🔍 Find a song" aria-label="Find a song" autocomplete="off">
+  <h2 class="sec">What shall we play?</h2>
+  <input id="srch" type="search" placeholder="Find a song" aria-label="Find a song" autocomplete="off">
   <div id="navbar" hidden></div>
   <div id="tabs" class="tabs"></div>
   <div id="tools" class="tools"></div>
@@ -468,6 +533,12 @@ function parse(u){
 
 /* ---------- kid screen ---------- */
 let cur=-1, errs=0;
+const ART=[
+'<svg viewBox="0 0 100 108" preserveAspectRatio="xMidYMid slice"><g transform="rotate(-8 50 44)"><circle cx="50" cy="44" r="38" fill="#1f3a3a"/><circle cx="50" cy="44" r="30" fill="none" stroke="#2f5656" stroke-width="1.5"/><circle cx="50" cy="44" r="23" fill="none" stroke="#2f5656" stroke-width="1.5"/><circle cx="50" cy="44" r="12" fill="#f6c445"/><circle cx="50" cy="44" r="2.5" fill="#1f3a3a"/></g></svg>',
+'<svg viewBox="0 0 100 108" preserveAspectRatio="xMidYMid slice"><g fill="#f6c445"><path d="M18 22c1 6 3 8 9 9-6 1-8 3-9 9-1-6-3-8-9-9 6-1 8-3 9-9z"/><path d="M82 60c1 5 3 7 8 8-5 1-7 3-8 8-1-5-3-7-8-8 5-1 7-3 8-8z"/></g><g transform="rotate(40 50 46)"><path d="M50 8c14 12 16 38 10 58H40C34 46 36 20 50 8z" fill="#fdf1dc"/><path d="M50 8c7 6 11 14 12 22H38c1-8 5-16 12-22z" fill="#ef6f61"/><circle cx="50" cy="38" r="6" fill="#7fd0c8" stroke="#ef6f61" stroke-width="2.5"/><path d="M40 52L28 70l14-6zM60 52l12 18-14-6z" fill="#ef6f61"/><path d="M44 66h12l-6 18z" fill="#f6c445"/></g></svg>',
+'<svg viewBox="0 0 100 108" preserveAspectRatio="xMidYMid slice"><g fill="#f6c445"><path d="M16 18c1 5 2 7 7 8-5 1-6 3-7 8-1-5-2-7-7-8 5-1 6-3 7-8z"/><path d="M84 16c1 5 2 7 7 8-5 1-6 3-7 8-1-5-2-7-7-8 5-1 6-3 7-8z"/></g><circle cx="50" cy="40" r="26" fill="#f9cf5a"/><circle cx="60" cy="34" r="23" fill="#2c3b63"/><ellipse cx="22" cy="70" rx="24" ry="12" fill="#f4b6b0"/><ellipse cx="76" cy="72" rx="26" ry="13" fill="#f4b6b0"/></svg>',
+'<svg viewBox="0 0 100 108" preserveAspectRatio="xMidYMid slice"><g fill="#fdf1dc"><path d="M14 16c1 5 2 7 7 8-5 1-6 3-7 8-1-5-2-7-7-8 5-1 6-3 7-8z"/><path d="M86 28c1 4 2 6 6 7-4 1-5 3-6 7-1-4-2-6-6-7 4-1 5-3 6-7z"/></g><g fill="#e9695c"><rect x="38" y="36" width="24" height="44"/><rect x="22" y="48" width="14" height="32"/><rect x="64" y="48" width="14" height="32"/><path d="M36 38l14-24 14 24zM20 50l9-16 9 16zM62 50l9-16 9 16z"/></g><path d="M50 14V4l9 3-9 3" fill="#f6c445"/><path d="M44 80V64a6 6 0 0112 0v16z" fill="#fdf1dc"/></svg>'];
+const GA=(n,i)=>/classic|space|rocket/i.test(n)?1:/good ?night|sleep|lullab|calm/i.test(n)?2:/opera|disney|princess|castle/i.test(n)?3:/kid|pop/i.test(n)?0:i%4;
 let view='home';
 let qs='';
 const nameHas=x=>{const n=(x.name+' '+artistOf(x)+' '+(x.alb||'')).toLowerCase(); return qs.split(' ').filter(Boolean).every(w=>n.includes(w));};
@@ -593,11 +664,13 @@ function render(){
       if(x.bad||x.type!=='song'||!x.group) return;
       const n=x.group; if(!gs.has(n)) gs.set(n,{n,id:x.id,c:0}); gs.get(n).c++;
     });
+    let gi=0;
     gs.forEach(o=>{
-      const b=document.createElement('button'); b.className='tile';
-      const a=document.createElement('div'); a.className='art';
-      const im=new Image(); im.alt=''; im.src='https://i.ytimg.com/vi/'+o.id+'/hqdefault.jpg'; a.append(im);
-      const t=document.createElement('span'); t.textContent=o.n+' · '+o.c+(o.c===1?' song':' songs');
+      const k=GA(o.n,gi++);
+      const b=document.createElement('button'); b.className='tile gt'; b.dataset.k=k;
+      const a=document.createElement('div'); a.className='art'; a.innerHTML=ART[k];
+      const t=document.createElement('span'), nm=document.createElement('b'), sm=document.createElement('small');
+      nm.textContent=o.n; sm.textContent=o.c+(o.c===1?' song':' songs'); t.append(nm,sm);
       b.append(a,t); b.onclick=()=>nav('g:'+o.n); g.append(b);
     });
     $('empty').hidden=gs.size>0; $('empty').textContent='No music here yet. Ask a grown-up to add some.';

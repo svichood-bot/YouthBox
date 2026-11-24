@@ -961,7 +961,7 @@ async function apiItems(l){
       out.push({id:sn.resourceId.videoId,name:sn.title,by:sn.videoOwnerChannelTitle||''});
     }
     tok=j.nextPageToken||'';
-  }while(tok&&out.length<500);
+  }while(tok);
   return out;
 }
 async function importList(l,label){
@@ -1008,7 +1008,9 @@ async function importList(l,label){
 async function addSongs(items,l,label){
   const m=$('addMsg');
   const have=new Set(S.items.map(x=>x.id));
-  const fresh=items.filter(x=>!have.has(x.id));
+  const deadSet=new Set(S.dead||[]);
+  const fresh=items.filter(x=>!have.has(x.id)&&!deadSet.has(x.id));
+  const skipped=items.filter(x=>!have.has(x.id)&&deadSet.has(x.id)).length;
   const group=label||(await ytTitle('https://www.youtube.com/playlist?list='+l))||'Playlist';
   let n=0;
   for(let i=0;i<fresh.length;i+=6){
@@ -1021,8 +1023,8 @@ async function addSongs(items,l,label){
   S.items=S.items.filter(x=>!(x.type==='list'&&x.id===l));
   save(); resetQ(); render(); renderParent();
   const nb=await checkEmbeds(true,true);
-  const dup=items.length-fresh.length, heldN=S.items.filter(x=>x.xw&&fresh.some(f=>f.id===x.id)).length;
-  m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+'.'+(nb?' '+nb+' can’t play in apps, so they’re hidden from the kids.':'')+(heldN?' '+heldN+' held back for words in the title.':'')+(xwOn()&&S.xwLy!==false?' Lyrics are being checked in the background.':'');
+  const dup=items.length-fresh.length-skipped, heldN=S.items.filter(x=>x.xw&&fresh.some(f=>f.id===x.id)).length;
+  m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+(skipped?' '+skipped+' you rejected before '+(skipped===1?'was':'were')+' left out.':'')+'.'+(nb?' '+nb+' can’t play in apps, so they’re hidden from the kids.':'')+(heldN?' '+heldN+' held back for words in the title.':'')+(xwOn()&&S.xwLy!==false?' Lyrics are being checked in the background.':'');
   return true;
 }
 $('add').onclick=async()=>{
@@ -1233,7 +1235,7 @@ $('addX').onclick=()=>$('addD').close();
 $('addD').addEventListener('close',()=>render());
 /* ---------- backup / restore ---------- */
 $('bkCopy').onclick=async()=>{
-  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp,src:S.src};
+  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp,src:S.src,dead:S.dead||[]};
   const code='YOUTHBOX1:'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   try{await navigator.clipboard.writeText(code); $('bkMsg').textContent='Backup copied ('+data.items.length+' items). Send it to the other phone and paste it there.';}
   catch(e){$('bkIn').value=code; $('bkMsg').textContent='Couldn’t copy automatically. Select the text in the box below and copy it.';}
@@ -1247,7 +1249,8 @@ function restoreText(t){
     const d=JSON.parse(decodeURIComponent(escape(atob(b))));
     if(!d||!Array.isArray(d.items)) throw 0;
     const have=new Set(S.items.map(x=>x.id)); let n=0;
-    d.items.forEach(x=>{if(x&&x.id&&typeof x.name==='string'&&!have.has(x.id)){S.items.push(x); have.add(x.id); n++;}});
+    S.dead=S.dead||[]; (Array.isArray(d.dead)?d.dead:[]).forEach(id=>{if(typeof id==='string'&&!S.dead.includes(id)) S.dead.push(id);});
+    d.items.forEach(x=>{if(x&&x.id&&typeof x.name==='string'&&!have.has(x.id)&&!S.dead.includes(x.id)){S.items.push(x); have.add(x.id); n++;}});
     (d.favs||[]).forEach(id=>{if(!S.favs.includes(id)) S.favs=[...S.favs,id];});
     const kids=new Set(S.kp.map(p=>p.id)); let k=0;
     (d.kp||[]).forEach(p=>{if(p&&p.id&&!kids.has(p.id)&&Array.isArray(p.songs)){S.kp.push(p); k++;}});
@@ -1260,7 +1263,7 @@ function restoreText(t){
 }
 $('bkRestore').onclick=()=>restoreText($('bkIn').value);
 $('bkFile').onclick=()=>{
-  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp,src:S.src};
+  const data={v:1,items:S.items.map(x=>{const y=Object.assign({},x); delete y.bad; delete y.subs; return y;}),favs:S.favs,kp:S.kp,src:S.src,dead:S.dead||[]};
   const code='YOUTHBOX1:'+btoa(unescape(encodeURIComponent(JSON.stringify(data))));
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([code],{type:'text/plain'}));
   a.download='youthbox-backup.txt'; document.body.append(a); a.click(); a.remove();
@@ -1270,8 +1273,13 @@ $('bkUp').onchange=e=>{
   const f=e.target.files[0]; if(!f) return;
   const r=new FileReader(); r.onload=()=>restoreText(String(r.result)); r.readAsText(f); e.target.value='';
 };
+let syncing=false;
 async function syncAll(quiet){
-  if(!S.apiKey||!S.src.length) return;
+  if(!S.apiKey||!S.src.length||syncing) return;
+  syncing=true;
+  try{ await syncAllRun(quiet); } finally{ syncing=false; }
+}
+async function syncAllRun(quiet){
   let add=0,rem=0;
   for(const o of S.src){
     try{
@@ -2082,7 +2090,11 @@ addEventListener('pagehide',lockUp);
 $('bkUp').addEventListener('click',()=>{skipLock=Date.now()+180000;});
 {const _d=decide; decide=function(v,y){_d(v,y); if(y) checkEmbeds(true,true);};}
 paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy(); xwInit();
-if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
+const SYNC_GAP=600000;
+const maybeSync=()=>{ if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>SYNC_GAP) syncAll(true); };
+maybeSync();
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden) maybeSync(); });
+setInterval(maybeSync,1800000);
 if(autoOn()) purgeBad();
 checkEmbeds(true,!S.apiKey||S.lastCheck===today());
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){

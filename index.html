@@ -29,7 +29,8 @@ main{padding:0 20px;max-width:1100px;margin:0 auto}
 #screen{position:relative;aspect-ratio:16/9;width:min(100%,640px);min-height:200px;margin:4px auto 16px;background:#000;border-radius:22px;overflow:hidden;box-shadow:0 14px 36px rgba(150,30,90,.28),0 0 0 5px #fff}
 #screen iframe{position:absolute;inset:0;width:100%;height:100%}
 #shield{position:absolute;inset:0;z-index:2;cursor:pointer;clip-path:var(--win)}
-#screen{--win:polygon(0 0,100% 0,100% calc(100% - 64px),calc(100% - 200px) calc(100% - 64px),calc(100% - 200px) 100%,0 100%)}
+#screen{--win:none}
+body.skipwin #screen{--win:polygon(0 0,100% 0,100% calc(100% - 64px),calc(100% - 200px) calc(100% - 64px),calc(100% - 200px) 100%,0 100%)}
 #cover{position:absolute;inset:0;z-index:1;pointer-events:none;clip-path:var(--win);display:none;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center;background:radial-gradient(500px 300px at 50% 0,#fff1a8,#ffc4dd)}
 body.hidevid #cover{display:flex}
 #cover .z{font-size:3.4rem;line-height:1}
@@ -188,7 +189,11 @@ dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y
 #lyrics p.note{color:var(--mut);padding:30px 8px;font-size:1.05rem}
 #lyAdj{display:flex;align-items:center;justify-content:center;gap:10px;margin:10px 0 0;font-size:.9rem;color:var(--mut)}
 #lyAdj .chip{padding:4px 12px}
-#cover.ly{justify-content:flex-start;padding:10px 12px 72px;gap:4px}
+#cover.ly{justify-content:flex-start;padding:10px 12px 14px;gap:4px}
+body.skipwin #cover.ly{padding-bottom:72px}
+body.qup #qbtn{visibility:hidden}
+#qbtn2{position:absolute;right:14px;top:6px;width:44px;height:44px;border-radius:50%;border:0;background:var(--card2);font-size:1.3rem;display:grid;place-items:center}
+#qHead{position:relative}
 #cover.ly .z{display:none}
 #cover.ly #coverT{font-size:.8rem;font-weight:500;color:var(--mut);-webkit-line-clamp:1}
 #coverL{display:none;width:100%;flex:1;min-height:0;flex-direction:column;align-items:center;justify-content:center;gap:4px;overflow:hidden}
@@ -240,7 +245,7 @@ body.lvshow #cover{display:none!important}
 <div id="qwrap" aria-hidden="true">
   <div id="qback"></div>
   <div id="qpanel" role="dialog" aria-label="Your queue">
-    <div id="qHead"><span class="grab"></span></div>
+    <div id="qHead"><span class="grab"></span><button id="qbtn2" aria-label="Close queue">☰</button></div>
     <div id="qTitle"><h2>Your queue</h2></div>
     <div id="qBody"></div>
   </div>
@@ -305,7 +310,7 @@ body.lvshow #cover{display:none!important}
       <li><b>YouthBox on the Home Screen:</b> it keeps its own storage and is usually not signed in. Open YouthBox in the browser itself instead.</li>
     </ul>
     <p><b>Good to know:</b> this signs the whole browser in to your account, so anyone using it can reach your YouTube account. Use a device you control, or a separate browser profile just for YouthBox. On a Premium family plan you can sign in with a family member’s account instead of your own. This can’t be guaranteed on every device, and ads with a countdown can’t be skipped until it ends.</p>
-    <p><b>Skip button:</b> swipe the bottom bar up to open the player. The pink picture covers the video (and any ad). YouTube’s Skip button shows in the small strip at the bottom-right. To see an ad yourself, open <b>Grown-ups</b> and turn off <b>Hide the video</b>.</p>
+    <p><b>Skip button:</b> swipe the bottom bar up to open the player. The pink picture covers the video (and any ad). If you need YouTube’s Skip button, open <b>Grown-ups</b> and turn on the Skip ad window, or turn off <b>Hide the video</b>.</p>
   </details>
   <div class="row"><button id="helpX" class="btn">Got it!</button></div>
 </dialog>
@@ -391,6 +396,8 @@ body.lvshow #cover{display:none!important}
   <hr>
   <label style="display:flex;gap:10px;align-items:center;margin:0 0 4px"><input id="hideVid" type="checkbox" style="width:auto;margin:0"> Hide the video (show a picture instead)</label>
   <p class="msg">Leave this on for kids. Turn it off to see the video, for example to tap “Skip ad” yourself.</p>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="skipWin" type="checkbox" style="width:auto;margin:0"> Leave a small window for YouTube’s “Skip ad” button</label>
+  <p class="msg">Off by default, so the picture covers the whole box. Only turn this on if you have ads and need to tap Skip. It shows a small piece of the video in the bottom-right corner.</p>
   <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="showLy" type="checkbox" style="width:auto;margin:0"> Show lyrics in the player</label>
   <p class="msg">Lyrics come from the free LRCLIB and lyrics.ovh services. Strong swear words are covered with stars.</p>
   <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="lvOn" type="checkbox" style="width:auto;margin:0"> Play a lyric video when the words can’t be found</label>
@@ -1129,7 +1136,8 @@ $('helpX').onclick=()=>$('helpD').close();
 setInterval(()=>{
   try{if(!pReady) return; const d=player.getDuration(); $('fill').style.width=d?(player.getCurrentTime()/d*100)+'%':'0';}catch(e){}
 },500);
-function paintVid(){document.body.classList.toggle('hidevid',S.hideVid!==false); $('hideVid').checked=S.hideVid!==false;}
+function paintVid(){document.body.classList.toggle('hidevid',S.hideVid!==false); $('hideVid').checked=S.hideVid!==false; document.body.classList.toggle('skipwin',!!S.skipWin); $('skipWin').checked=!!S.skipWin;}
+$('skipWin').onchange=()=>{S.skipWin=$('skipWin').checked; save(); paintVid();};
 $('hideVid').onchange=()=>{S.hideVid=$('hideVid').checked; save(); paintVid();};
 /* ---------- lock-screen / notification controls ---------- */
 function setSession(it){
@@ -1167,21 +1175,21 @@ function nav(v){
 function openSheet(){
   if(shOpen) return; shOpen=true;
   $('sheet').classList.add('open'); $('sheet').setAttribute('aria-hidden','false');
-  history.pushState({sh:1},''); shTab='q'; renderQ(); paintTabs();
+  history.pushState({sh:1},''); shTab='lyr'; renderQ(); paintTabs();
 }
 function paintSheetClosed(){shOpen=false; const s=$('sheet'); s.classList.remove('open'); s.style.transform=''; s.setAttribute('aria-hidden','true');}
 function closeSheet(){if(shOpen) history.back();}
 function openQ(){
   if(qOpen) return; qOpen=true;
   const w=$('qwrap'); w.classList.add('open'); w.setAttribute('aria-hidden','false');
-  history.pushState({q:1},''); renderQ();
+  document.body.classList.add('qup'); history.pushState({q:1},''); renderQ();
 }
 function paintQClosed(){
   qOpen=false; const w=$('qwrap'); w.classList.remove('open'); w.setAttribute('aria-hidden','true');
-  $('qpanel').style.transform=''; $('qback').style.opacity='';
+  $('qpanel').style.transform=''; $('qback').style.opacity=''; document.body.classList.remove('qup');
 }
 function closeQ(){if(qOpen) history.back();}
-$('qback').onclick=closeQ;
+$('qback').onclick=closeQ; $('qbtn2').onclick=closeQ;
 window.navPop=()=>{
   if(qOpen){paintQClosed(); return;}
   if(shOpen){paintSheetClosed(); return;}
@@ -1245,7 +1253,7 @@ function ensurePlay(){
     if(gq.lock===null){
       if(Math.abs(dy)<8&&Math.abs(dx)<8) return;
       gq.lock=Math.abs(dy)>Math.abs(dx)?'v':'h';
-      if(gq.lock==='v'){qw.classList.add('dragging'); if(gq.mode==='open'){const b=$('qBody'); b.textContent=''; renderQueue(b);}}
+      if(gq.lock==='v'){qw.classList.add('dragging'); document.body.classList.add('qup'); if(gq.mode==='open'){const b=$('qBody'); b.textContent=''; renderQueue(b);}}
     }
     if(gq.lock!=='v') return;
     const H=qp.offsetHeight, off=gq.mode==='open'?Math.min(H,Math.max(0,H+dy)):Math.min(H,Math.max(0,dy));
@@ -1256,11 +1264,11 @@ function ensurePlay(){
     if(!gq) return; const d=gq; gq=null; qw.classList.remove('dragging');
     if(d.lock!=='v'){clearQ(); return;}
     const t=e.changedTouches?e.changedTouches[0]:null, dy=t?t.clientY-d.y0:0, v=Math.abs(dy)/Math.max(1,Date.now()-d.t0);
-    if(d.mode==='open'){clearQ(); if(dy<-50||(v>0.5&&dy<-15)) openQ();}
+    if(d.mode==='open'){clearQ(); if(dy<-50||(v>0.5&&dy<-15)) openQ(); else document.body.classList.remove('qup');}
     else if(dy>70||(v>0.5&&dy>25)){closeQ(); setTimeout(()=>{if(qOpen) clearQ();},800);}
     else clearQ();
   };
-  const cancelQ=()=>{gq=null; qw.classList.remove('dragging'); clearQ();};
+  const cancelQ=()=>{gq=null; qw.classList.remove('dragging'); clearQ(); if(!qOpen) document.body.classList.remove('qup');};
   qp.addEventListener('touchstart',e=>{if(e.target.closest('#qHead,#qTitle')) startQ('close',e);},{passive:true});
   qp.addEventListener('touchmove',moveQ,{passive:true});
   qp.addEventListener('touchend',endQ,{passive:true});

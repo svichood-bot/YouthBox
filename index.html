@@ -848,7 +848,16 @@ $('shuf').onclick=()=>{
 };
 $('pp').onclick=toggle; $('shield').onclick=toggle; $('next').onclick=nextBtn; $('prev').onclick=prevBtn;
 
+/* keep playing when the app is switched away (browser pauses the embed on the switch) */
+function keepGoing(){
+  if(!pReady||userPaused||cur<0||limitHit()) return;
+  [0,200,600,1500].forEach(ms=>setTimeout(()=>{
+    try{ if(!userPaused&&player.getPlayerState()!==1) player.playVideo(); }catch(e){}
+  },ms));
+}
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) keepGoing(); });
 function onState(e){
+  if(e.data===2&&document.hidden&&!userPaused) keepGoing();
   const playing=e.data===1; setIcon(playing); document.body.classList.toggle('playing',playing); if(playing) $('pp').classList.remove('nudge');
   try{navigator.mediaSession.playbackState=playing?'playing':'paused';}catch(x){}
   if(playing){errs=0; startTick(); if(mutedKick){mutedKick=false; setTimeout(()=>{try{player.unMute();}catch(x){}},400);}} else stopTick();

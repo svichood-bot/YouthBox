@@ -464,7 +464,7 @@ hr{border-top-color:#f0d9b5}
   <div class="row"><button id="bkCopy" class="btn alt">Copy backup</button></div>
   <textarea id="bkIn" rows="3" placeholder="Paste a backup here" aria-label="Backup text" style="width:100%;font:inherit;border:2px solid var(--line);border-radius:12px;padding:8px;margin:4px 0 10px"></textarea>
   <div class="row"><button id="bkRestore" class="btn alt">Restore backup</button></div>
-  <div class="row"><button id="bkFile" class="btn alt">Save backup as file</button><label class="btn alt" for="bkUp">Restore from file</label><input id="bkUp" type="file" accept=".txt,.json,text/plain" hidden></div>
+  <div class="row"><button id="bkFile" class="btn alt">Save backup as file</button><label class="btn alt" for="bkUp">Restore from file</label><input id="bkUp" type="file" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;pointer-events:none" tabindex="-1"></div>
   <p id="bkMsg" class="msg"></p>
   <div id="ytLinks"></div>
   <hr>

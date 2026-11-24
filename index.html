@@ -339,7 +339,7 @@ hr{border-top-color:#f0d9b5}
       <button id="qbtn" aria-label="Up next">☰</button>
       <button id="shuf" class="tog" aria-pressed="false" aria-label="Shuffle"><svg viewBox="0 0 24 24"><path d="M3 6h4c5 0 5 12 10 12h4M3 18h4c2 0 3.2-1.4 4.2-3M14 8c.9-1.2 1.9-2 3-2h4M18 3l3 3-3 3M18 15l3 3-3 3"/></svg></button>
       <button id="prev" aria-label="Previous song"><svg viewBox="0 0 24 24"><path d="M6 5h2v14H6zM20 5v14L9 12z"/></svg></button>
-      <button id="pp" class="big" aria-label="Play"><svg viewBox="0 0 24 24"><circle cx="8.3" cy="7.2" r="1.8"/><circle cx="15.7" cy="7.2" r="1.8"/><g id="ico"><path d="M9 10.5v10l8-5z"/></g></svg></button>
+      <button id="pp" class="big" aria-label="Play"><svg viewBox="0 0 24 24"><g id="ico"><path d="M8.5 5.5v13l10.5-6.5z"/></g></svg></button>
       <button id="next" aria-label="Next song"><svg viewBox="0 0 24 24"><path d="M16 5h2v14h-2zM4 5v14l11-7z"/></svg></button>
     </div>
   </div>
@@ -729,7 +729,7 @@ function setBarArt(it,i){
 }
 function resetBar(){const a=$('barArt'); a.style.cssText=''; a.textContent='🎵'; $('now').textContent='Pick a song to start.';}
 function setIcon(playing){
-  $('ico').innerHTML=playing?'<path d="M8.4 10.5h2.8v10H8.4zM12.8 10.5h2.8v10h-2.8z"/>':'<path d="M9 10.5v10l8-5z"/>';
+  $('ico').innerHTML=playing?'<path d="M7.5 5.5h3.4v13H7.5zM13.1 5.5h3.4v13h-3.4z"/>':'<path d="M8.5 5.5v13l10.5-6.5z"/>';
   $('pp').setAttribute('aria-label',playing?'Pause':'Play');
 }
 
@@ -872,7 +872,7 @@ function renderParent(){
     t.textContent=(it.type==='list'?'Playlist: ':'')+it.name+(it.bad?' (won’t play here)':'');
     b.textContent='Remove'; b.setAttribute('aria-label','Remove '+it.name);
     b.onclick=()=>{
-      S.items.splice(i,1); save(); resetQ();
+      bury(it.id); S.items.splice(i,1); save(); resetQ();
       if(i===cur){cur=-1; if(pReady) player.stopVideo(); resetBar();}
       else if(i<cur) cur--;
       render(); renderParent();
@@ -1025,8 +1025,12 @@ $('add').onclick=async()=>{
   render(); renderParent();
 };
 $('saveKey').onclick=()=>{S.apiKey=$('apiKey').value.trim(); save(); $('keyMsg').textContent=S.apiKey?'Key saved. Now try adding the playlist again.':'Key removed.';};
+const bury=id=>{S.dead=S.dead||[]; if(id&&!S.dead.includes(id)) S.dead.push(id);};
 $('remBad').onclick=()=>{
+  const n=S.items.filter(x=>x.bad).length;
+  S.items.filter(x=>x.bad).forEach(x=>bury(x.id));
   S.items=S.items.filter(x=>!x.bad); save(); resetQ();
+  $('addMsg').textContent=n?('Removed '+n+' song'+(n===1?'':'s')+' that won’t play.'):'No songs that won’t play right now.';
   cur=-1; if(pReady) player.stopVideo(); resetBar(); render(); renderParent();
 };
 $('retry').onclick=()=>{S.items.forEach(x=>{delete x.bad;}); save(); render(); renderParent();};
@@ -1086,6 +1090,7 @@ async function findSub(i,quiet){
 }
 function useSub(i,sb){
   const it=S.items[i], old=it.id;
+  bury(old); delete it.src;
   it.id=sb.id; it.name=sb.name; it.by=sb.by; delete it.art; delete it.alb; delete it.noalb; delete it.bad; delete it.subs; delete it.lv;
   S.favs=S.favs.map(x=>x===old?sb.id:x);
   S.kp.forEach(p=>{p.songs=p.songs.map(x=>x===old?sb.id:x);});
@@ -1202,7 +1207,7 @@ async function syncAll(quiet){
     try{
       const items=await apiItems(o.id); if(!items.length) continue;
       const ids=new Set(items.map(x=>x.id)), have=new Set(S.items.map(x=>x.id));
-      items.filter(x=>!have.has(x.id)).forEach(x=>{S.items.push({type:'song',id:x.id,name:x.name,by:x.by,group:o.name,src:o.id}); add++;});
+      items.filter(x=>!have.has(x.id)&&!(S.dead||[]).includes(x.id)).forEach(x=>{S.items.push({type:'song',id:x.id,name:x.name,by:x.by,group:o.name,src:o.id}); add++;});
       const n=S.items.length; S.items=S.items.filter(x=>!(x.src===o.id&&!ids.has(x.id))); rem+=n-S.items.length;
     }catch(e){if(!quiet) $('addMsg').textContent='Refresh problem: '+e.message;}
   }
@@ -1216,7 +1221,7 @@ async function autoFix(){
   const todo=S.items.filter(x=>x.bad&&!x.subs).slice(0,6);
   for(const it of todo){
     if(!(await findSub(S.items.indexOf(it),true))) break;
-    if(!it.subs||!it.subs.length){it.gone=true; continue;}
+    if(!it.subs||!it.subs.length){it.gone=true; bury(it.id); continue;}
     if(it.why==='explicit'){const c=it.subs.find(v=>/\b(clean|radio edit)\b/i.test(v.name)); if(c) useSub(S.items.indexOf(it),c);}
   }
   S.items=S.items.filter(x=>!x.gone); save(); resetQ(); render(); renderParent();

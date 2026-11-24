@@ -436,7 +436,8 @@ hr{border-top-color:#f0d9b5}
   <input id="nm">
   <div class="row"><button id="add" class="btn">Add</button></div>
   <p id="addMsg" class="msg"></p>
-  <details><summary>Playlist not importing? Use a free YouTube key</summary>
+  <p id="srchState" class="msg" style="font-weight:600"></p>
+  <details id="keyBox"><summary>YouTube key: turns on song search, playlist import and song checks</summary>
     <p>This is the most reliable way to read playlists. It takes about five minutes, once. The same key lets the kids search for more songs to ask for.</p>
     <ol class="how">
       <li>Go to <b>console.cloud.google.com</b> and create a project.</li>
@@ -446,7 +447,7 @@ hr{border-top-color:#f0d9b5}
       <li>Paste the key below and tap Save key. It stays in this browser only.</li>
     </ol>
     <input id="apiKey" type="password" autocomplete="off" placeholder="Paste key here" aria-label="YouTube API key">
-    <div class="row"><button id="saveKey" class="btn alt">Save key</button></div>
+    <div class="row"><button id="saveKey" class="btn alt">Save key</button><button id="copyKey" class="btn alt" hidden>Copy key</button></div>
     <p id="keyMsg" class="msg"></p>
   </details>
   <hr>
@@ -459,7 +460,7 @@ hr{border-top-color:#f0d9b5}
   <p id="expMsg" class="msg"></p>
   <hr>
   <h2>Move to another phone</h2>
-  <p class="msg">Copy a backup, send it to the other phone (message or email to yourself), then paste it there and restore. Songs, playlists, favourites and kids’ lists come across. The YouTube key, PIN and time limit don’t.</p>
+  <p class="msg">Copy a backup, send it to the other phone (message or email to yourself), then paste it there and restore. Songs, playlists, favourites and kids’ lists come across. The PIN and time limit don’t, and neither does the YouTube key. To move the key, open the YouTube key section above and tap Copy key.</p>
   <div class="row"><button id="bkCopy" class="btn alt">Copy backup</button></div>
   <textarea id="bkIn" rows="3" placeholder="Paste a backup here" aria-label="Backup text" style="width:100%;font:inherit;border:2px solid var(--line);border-radius:12px;padding:8px;margin:4px 0 10px"></textarea>
   <div class="row"><button id="bkRestore" class="btn alt">Restore backup</button></div>
@@ -828,7 +829,7 @@ function onErr(e){
     it.lv=0; save(); LY.st='none'; document.body.classList.remove('lvshow');
     try{player.loadVideoById(it.id);}catch(x){} paintLyr(); return;
   }
-  if(it&&it.type==='song'&&[2,100,101,150].includes(c)){it.bad=true; save(); render(); if(autoOn()) setTimeout(purgeBad,4000);}
+  if(it&&it.type==='song'&&[2,100,101,150].includes(c)){it.bad=true; save(); render();}
   $('now').textContent='“'+(it?it.name:'That song')+'” can’t play here. Skipping…';
   if(++errs>25) return;
   if(it&&it.type==='list'){setTimeout(nextBtn,1200); return;}
@@ -865,7 +866,7 @@ function askPin(cb){
   $('pinOk').onclick=ok; $('pinNo').onclick=()=>d.close();
   i.onkeydown=e=>{if(e.key==='Enter') ok();};
 }
-function openParent(){renderParent(); $('addMsg').textContent=''; $('parD').showModal();}
+function openParent(){if(autoOn()) purgeBad(); renderParent(); $('addMsg').textContent=''; $('parD').showModal();}
 function renderParent(){
   const ul=$('plist'); ul.textContent='';
   if(!S.items.length){const li=document.createElement('li'); li.textContent='Nothing added yet.'; ul.append(li);}
@@ -910,6 +911,8 @@ function renderParent(){
   $('lim').value=S.limit;
   $('usedMsg').textContent='Listened today: '+Math.floor(used()/60)+' min';
   $('apiKey').value=S.apiKey||'';
+  $('srchState').textContent=S.apiKey?'🔍 Song search is ON for this device.':'🔍 Song search is OFF on this device. Save your YouTube key below to turn it on.';
+  $('copyKey').hidden=!S.apiKey; if(!S.apiKey) $('keyBox').open=true;
   const yl=$('ytLinks'); yl.textContent='';
   const ids=S.items.filter(x=>x.type==='song'&&!x.bad).map(x=>x.id);
   for(let i=0;i<ids.length;i+=50){
@@ -1007,7 +1010,7 @@ async function addSongs(items,l,label){
   if(!S.src.some(o=>o.id===l)) S.src=[...S.src,{id:l,name:group}];
   S.items=S.items.filter(x=>!(x.type==='list'&&x.id===l));
   save(); resetQ(); render(); renderParent();
-  const nb=S.apiKey?await checkEmbeds(true):0;
+  const nb=await checkEmbeds(true,true);
   const dup=items.length-fresh.length;
   m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+'.'+(nb?' '+nb+' can’t play in apps, so they’re hidden from the kids.':'');
   return true;
@@ -1023,10 +1026,20 @@ $('add').onclick=async()=>{
   m.textContent='Looking up the name…';
   const mt=await ytMeta(vurl(p.id)), title=name||mt.title||'Song';
   S.items.push({type:'song',id:p.id,name:title,by:mt.by}); save(); resetQ();
-  $('url').value=''; $('nm').value=''; m.textContent='Added “'+title+'”.';
+  $('url').value=''; $('nm').value=''; m.textContent='Added “'+title+'”. Checking it plays…';
   render(); renderParent();
+  const nb=await checkEmbeds(true,true), mine=S.items.find(x=>x.id===p.id);
+  m.textContent=(nb&&(!mine||mine.bad))?'“'+title+'” can’t play in apps, so I left it out.':'Added “'+title+'”.';
 };
-$('saveKey').onclick=()=>{S.apiKey=$('apiKey').value.trim(); save(); $('keyMsg').textContent=S.apiKey?'Key saved. Now try adding the playlist again.':'Key removed.';};
+$('saveKey').onclick=()=>{
+  S.apiKey=$('apiKey').value.trim(); save();
+  $('keyMsg').textContent=S.apiKey?'Key saved. Song search and song checks are on for this device.':'Key removed. Song search is off.';
+  renderParent(); render(); renderMore(); if(S.apiKey) checkEmbeds(true,true);
+};
+$('copyKey').onclick=async()=>{
+  try{await navigator.clipboard.writeText(S.apiKey||''); $('keyMsg').textContent='Key copied. Send it to yourself, then paste it on the other phone and tap Save key.';}
+  catch(e){$('keyMsg').textContent='Couldn’t copy automatically. Tap the key box, show the text and copy it.';}
+};
 const bury=id=>{S.dead=S.dead||[]; if(id&&!S.dead.includes(id)) S.dead.push(id);};
 const autoOn=()=>S.autoRm!==false;
 function purgeBad(){
@@ -1064,9 +1077,41 @@ $('cpList').onclick=async()=>{
 };
 /* ---------- broken songs: check, hide, replace ---------- */
 const dec=x=>{const t=document.createElement('textarea'); t.innerHTML=x; return t.value;};
-async function checkEmbeds(quiet){
-  if(!S.apiKey) return 0;
-  const all=S.items.filter(x=>x.type==='song'); let bad=0;
+async function oembedOk(id){
+  try{
+    const r=await fetch('https://www.youtube.com/oembed?format=json&url='+encodeURIComponent(vurl(id)));
+    if(r.ok) return true;
+    return [401,403,404].includes(r.status)?false:null;
+  }catch(e){return 'err';}
+}
+async function checkNoKey(quiet,onlyNew){
+  const m=$('addMsg'), all=S.items.filter(x=>x.type==='song'&&!x.bad&&!(onlyNew&&x.chk));
+  if(!all.length){if(!quiet) m.textContent='All songs look fine.'; return 0;}
+  if((await oembedOk('jNQXAC9IVRw'))!==true){if(!quiet) m.textContent='Couldn’t check right now. Are you online?'; return 0;}
+  const res=[];
+  for(let i=0;i<all.length;i+=5){
+    await Promise.all(all.slice(i,i+5).map(async x=>{
+      let r=await oembedOk(x.id);
+      if(r==='err'){await new Promise(z=>setTimeout(z,600)); r=await oembedOk(x.id);}
+      res.push([x,r]);
+    }));
+  }
+  const fails=res.filter(a=>a[1]===false||a[1]==='err');
+  if(res.length>=5&&fails.length>res.length*0.4){
+    if(!quiet) m.textContent='The check didn’t look reliable, so I left your songs alone. Try again later, or add a YouTube key for a better check.';
+    return 0;
+  }
+  res.forEach(([x,r])=>{if(r===true) x.chk=1;});
+  fails.forEach(([x])=>{x.bad=true; x.why='blocked';});
+  const bad=fails.length;
+  S.lastCheck=today(); save(); resetQ(); render(); renderParent();
+  const rm=autoOn()?purgeBad():0;
+  if(!quiet) m.textContent=bad?(rm?'Removed '+rm+' song'+(rm===1?'':'s')+' that can’t play in apps.':bad+' song'+(bad===1?'':'s')+' can’t play in apps and '+(bad===1?'is':'are')+' now hidden.'):'All songs look fine.';
+  return bad;
+}
+async function checkEmbeds(quiet,onlyNew){
+  if(!S.apiKey) return checkNoKey(quiet,onlyNew);
+  const all=S.items.filter(x=>x.type==='song'&&!(onlyNew&&x.chk)); let bad=0;
   try{
     for(let i=0;i<all.length;i+=50){
       const ch=all.slice(i,i+50);
@@ -1077,7 +1122,7 @@ async function checkEmbeds(quiet){
         const v=st.get(x.id), z=v&&v.status; if(x.bad) return;
         const sn=v?((v.snippet.title||'')+' '+(v.snippet.description||'').slice(0,400)):'';
         const ex=v&&!/\bclean\b/i.test(v.snippet.title||'')&&(/\b(explicit|uncensored|dirty)\b/i.test(sn)||((v.contentDetails||{}).contentRating||{}).ytRating==='ytAgeRestricted');
-        if(!z||z.embeddable===false){x.bad=true; x.why='blocked'; bad++;} else if(ex){x.bad=true; x.why='explicit'; bad++;}
+        if(!z||z.embeddable===false){x.bad=true; x.why='blocked'; bad++;} else if(ex){x.bad=true; x.why='explicit'; bad++;} else x.chk=1;
       });
     }
     S.lastCheck=today(); save(); resetQ(); render(); renderParent();
@@ -1200,6 +1245,7 @@ function restoreText(t){
     save(); resetQ(); render(); renderParent(); $('bkIn').value='';
     m.textContent='Restored '+n+' new song'+(n===1?'':'s')+' and '+k+' list'+(k===1?'':'s')+'.'+(n+k===0?' (Everything in it was already here.)':'');
     if(S.apiKey) syncAll(true);
+    checkEmbeds(true,true);
   }catch(e){m.textContent='The backup looks cut off or changed on the way. Try “Save backup as file” and “Restore from file” instead.';}
 }
 $('bkRestore').onclick=()=>restoreText($('bkIn').value);
@@ -1227,7 +1273,7 @@ async function syncAll(quiet){
   }
   S.lastSync=Date.now(); save(); resetQ(); render(); renderParent();
   if(!quiet) $('addMsg').textContent='Playlists refreshed: '+add+' added, '+rem+' removed.';
-  if(add) checkEmbeds(true);
+  if(add) checkEmbeds(true,true);
 }
 $('syncNow').onclick=()=>{$('addMsg').textContent='Refreshing…'; syncAll(false);};
 async function autoFix(){
@@ -1470,7 +1516,7 @@ function reqAdd(i,v){
   if(!S.items.some(x=>x.id===v.id)) S.items.push({type:'song',id:v.id,name:v.name,by:v.by});
   const t=S.req[i]; S.req.splice(i,1); delete reqRes[t]; save(); resetQ(); render(); renderParent();
   $('reqMsg').textContent='Added “'+v.name+'”.';
-  if(S.apiKey) checkEmbeds(true);
+  checkEmbeds(true,true);
 }
 {const _p=renderParent; renderParent=function(){_p(); renderReq(); renderAsk(); badge();};}
 /* ---------- search all songs (text only, filtered) + remote approval ---------- */
@@ -1483,7 +1529,7 @@ function renderMore(){
   if(!qs) return;
   const d=document.createElement('div'); d.className='divider'; d.textContent='🙋 More songs you can ask for'; w.append(d);
   const msg=t=>{const p=document.createElement('p'); p.className='msg'; p.textContent=t; w.append(p);};
-  if(!S.apiKey) msg('Song search isn’t switched on yet. You can still ask a grown-up to add it.');
+  if(!S.apiKey) msg('Song search isn’t switched on for this device yet. Ask a grown-up to turn it on (Grown-ups, then YouTube key). You can still ask them to add a song.');
   else if(moreBusy===qs) msg('Looking for more songs… 🔎');
   else if(moreFor===qs){
     const list=moreRes.filter(v=>!S.items.some(x=>x.id===v.id));
@@ -1782,10 +1828,19 @@ $('enrichBtn').onclick=async()=>{
   m.textContent=fail?'Couldn’t reach the lyrics service. Check you’re online and try again.':'Done. Found albums for '+got+' song'+(got===1?'':'s')+'.';
 };
 
+let skipLock=0;
+function lockUp(){
+  if(Date.now()<skipLock) return;
+  document.querySelectorAll('dialog[open]').forEach(d=>{if(d.id!=='helpD') d.close();});
+}
+document.addEventListener('visibilitychange',()=>{if(document.hidden) lockUp();});
+addEventListener('pagehide',lockUp);
+$('bkUp').addEventListener('click',()=>{skipLock=Date.now()+180000;});
+{const _d=decide; decide=function(v,y){_d(v,y); if(y) checkEmbeds(true,true);};}
 paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy();
 if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
 if(autoOn()) purgeBad();
-if(S.apiKey&&S.lastCheck!==today()) checkEmbeds(true);
+checkEmbeds(true,!S.apiKey||S.lastCheck===today());
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{

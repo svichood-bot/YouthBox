@@ -287,6 +287,17 @@ hr{border-top-color:#f0d9b5}
 #seek::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:var(--sun);border:3px solid var(--dt)}
 .skb{display:flex;justify-content:center;gap:8px;margin-top:4px;flex-wrap:wrap}
 .skb .chip{padding:5px 14px;font-size:.95rem}
+
+#plist{max-height:55vh}
+#libBox summary{font-size:1.25rem;font-weight:700;margin:10px 0}
+.libTools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}
+.libTools input,.libTools select{font:inherit;padding:6px 10px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);max-width:100%}
+.libTools input{flex:1;min-width:150px}
+#plist li>span,#xwL li>span{flex:1;min-width:140px}
+#plist li small,#xwL li small{display:block;color:var(--mut);font-size:.85rem}
+#xwL{list-style:none;margin:8px 0 14px;padding:0;max-height:300px;overflow:auto}
+#xwL li{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
+#xwL button{background:var(--card2);border:0;border-radius:8px;padding:3px 12px}
 </style>
 </head>
 <body>
@@ -428,6 +439,11 @@ hr{border-top-color:#f0d9b5}
   <ul id="askL"></ul>
   <ul id="reqL"></ul>
   <p id="reqMsg" class="msg"></p>
+  <div id="xwBox" hidden>
+    <h2 id="xwHead">Held back 🚫</h2>
+    <p class="msg">These songs are hidden from the kids because of words in the title or lyrics. Tap <b>Allow</b> on any song you have decided is OK.</p>
+    <ul id="xwL"></ul>
+  </div>
   <hr>
   <h2>Add music</h2>
   <label for="url">YouTube or YouTube Music link (one song, or a playlist)</label>
@@ -474,6 +490,18 @@ hr{border-top-color:#f0d9b5}
   <p class="msg">Leave this on for kids. Turn it off to see the video, for example to tap “Skip ad” yourself.</p>
   <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="skipWin" type="checkbox" style="width:auto;margin:0"> Leave a small window for YouTube’s “Skip ad” button</label>
   <p class="msg">Off by default, so the picture covers the whole box. Only turn this on if you have ads and need to tap Skip. It shows a small piece of the video in the bottom-right corner.</p>
+  <hr>
+  <h2>Keep songs clean 🧼</h2>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="xwOn" type="checkbox" style="width:auto;margin:0"> Hold back songs with bad words in the title or lyrics</label>
+  <p class="msg">On by default. Catches swearing, graphic sex words, songs about killing or hurting yourself or others, and blasphemy. Held songs are hidden from the kids and listed under “Held back” at the top of this page. Tap <b>Allow</b> to let one through. That only changes that one song.</p>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="xwMild" type="checkbox" style="width:auto;margin:0"> Include milder swearing (damn, “what the hell”, your ass, crap, piss)</label>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="xwViol" type="checkbox" style="width:auto;margin:0"> Include songs about killing or hurting yourself or others</label>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="xwBlas" type="checkbox" style="width:auto;margin:0"> Include blasphemy (God’s or Jesus’ name used as a curse)</label>
+  <p class="msg">Christian songs are fine. “Jesus”, “Christ”, “Lord”, “hell” and “devil” on their own never trigger this. Only a holy name used with a curse does, like “goddamn”.</p>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="xwBlasX" type="checkbox" style="width:auto;margin:0"> Stricter: also catch “Oh my God” and “Jesus Christ” said as exclamations</label>
+  <p class="msg">Off by default. Lyrics that look like worship are skipped, but a few worship songs could still be caught. Tap Allow if that happens.</p>
+  <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="xwLy" type="checkbox" style="width:auto;margin:0"> Also check the lyrics</label>
+  <p class="msg">YouthBox looks up lyrics for each song in the background (LRCLIB and lyrics.ovh). If no lyrics can be found, or a lyric video is shown instead, a song can only be checked by its title and YouTube’s own explicit tags.</p>
   <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="showLy" type="checkbox" style="width:auto;margin:0"> Show lyrics in the player</label>
   <p class="msg">Lyrics come from the free LRCLIB and lyrics.ovh services. Strong swear words are covered with stars.</p>
   <label style="display:flex;gap:10px;align-items:center;margin:10px 0 4px"><input id="lvOn" type="checkbox" style="width:auto;margin:0"> Play a lyric video when the words can’t be found</label>
@@ -487,8 +515,20 @@ hr{border-top-color:#f0d9b5}
     <button id="chPin" class="btn alt">Change PIN</button>
   </div>
   <hr>
-  <h2>In the library</h2>
-  <ul id="plist"></ul>
+  <details id="libBox"><summary id="libSum">In the library</summary>
+    <div class="libTools">
+      <input id="libQ" type="search" placeholder="Search songs, artists, playlists" aria-label="Search the library" autocomplete="off">
+      <select id="libSort" aria-label="Sort the library">
+        <option value="new">Newest first</option><option value="old">Oldest first</option><option value="az">Name A–Z</option><option value="za">Name Z–A</option><option value="art">Artist A–Z</option><option value="grp">By playlist</option>
+      </select>
+      <select id="libF" aria-label="Show">
+        <option value="all">Show everything</option><option value="songs">Songs only</option><option value="held">Held back (words)</option><option value="bad">Won’t play</option><option value="allowed">Allowed by me</option><option value="lists">Playlists only</option>
+      </select>
+    </div>
+    <p id="libCnt" class="msg"></p>
+    <ul id="plist"></ul>
+    <div class="row"><button id="libMore" class="btn alt" hidden>Show more</button><button id="libDel" class="btn alt" hidden>Remove these</button></div>
+  </details>
   <div class="row"><button id="remBad" class="btn alt">Remove songs that won’t play</button><button id="retry" class="btn alt">Try them again</button></div>
   <div class="row"><button id="enrichBtn" class="btn alt">Look up artists &amp; albums</button></div>
   <p id="enrMsg" class="msg"></p>
@@ -569,7 +609,8 @@ function artistOf(x){
   return m?cleanArt(m[1]):cleanArt(x.by);
 }
 const inView=x=>qs?(x.type==='song'&&nameHas(x)):view==='all'||view==='home'||view==='q'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view.startsWith('a:')?(artistOf(x)||'Other').toLowerCase()===view.slice(2).toLowerCase():view.startsWith('b:')?(x.alb||'').toLowerCase()===view.slice(2).toLowerCase():view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
-const ok=i=>{const x=S.items[i]; return !!x&&!x.bad&&inView(x);};
+const hid=x=>!!(x.bad||x.xw);
+const ok=i=>{const x=S.items[i]; return !!x&&!hid(x)&&inView(x);};
 const vis=()=>{
   const r=S.items.map((x,i)=>i).filter(ok), sv=S.sort||'added', kl=S.kp.find(p=>p.id===view);
   if(sv==='az'||sv==='za') r.sort((a,b)=>S.items[a].name.localeCompare(S.items[b].name,undefined,{sensitivity:'base'})*(sv==='za'?-1:1));
@@ -599,10 +640,10 @@ function renderQueue(g){
   const top=document.createElement('div'); top.className='row';
   top.append(mk('➕ Add songs',()=>openPick({icon:'🎧',name:'Queue',songs:S.q,q:1})),mk('Clear queue',()=>{S.q.length=0; save(); render();}));
   box.append(top);
-  const live=S.q.filter(id=>S.items.some(x=>x.id===id&&!x.bad));
+  const live=S.q.filter(id=>S.items.some(x=>x.id===id&&!hid(x)));
   if(!live.length){const e=document.createElement('p'); e.className='msg'; e.textContent='The queue is empty. Tap ＋ on a song, or ➕ Add songs.'; box.append(e);}
   S.q.forEach((id,k)=>{
-    const it=S.items.find(x=>x.id===id&&!x.bad); if(!it) return;
+    const it=S.items.find(x=>x.id===id&&!hid(x)); if(!it) return;
     const r=document.createElement('div'); r.className='qrow';
     const im=new Image(); im.alt=''; im.src='https://i.ytimg.com/vi/'+id+'/mqdefault.jpg';
     const t=document.createElement('span'); t.textContent=it.name;
@@ -636,7 +677,7 @@ function paintNow(){
 $('qbtn').onclick=()=>{qOpen?closeQ():openQ();};
 function popQ(){
   while(S.q.length){
-    const id=S.q.shift(), i=S.items.findIndex(x=>x.id===id&&!x.bad);
+    const id=S.q.shift(), i=S.items.findIndex(x=>x.id===id&&!hid(x));
     if(i>=0){save(); if(view==='q') setTimeout(render,0); return i;}
   }
   return null;
@@ -651,9 +692,9 @@ function renderTabs(){
 }
 function toggleFav(id){S.favs=S.favs.includes(id)?S.favs.filter(x=>x!==id):[...S.favs,id]; save(); render();}
 function render(){
-  if(view.startsWith('g:')){ if(!S.items.some(x=>!x.bad&&(x.group||'Songs')===view.slice(2))) view='home'; }
-  else if(view.startsWith('a:')){ if(!S.items.some(x=>!x.bad&&x.type==='song'&&(artistOf(x)||'Other').toLowerCase()===view.slice(2).toLowerCase())) view='artists'; }
-  else if(view.startsWith('b:')){ if(!S.items.some(x=>!x.bad&&(x.alb||'').toLowerCase()===view.slice(2).toLowerCase())) view='albums'; }
+  if(view.startsWith('g:')){ if(!S.items.some(x=>!hid(x)&&(x.group||'Songs')===view.slice(2))) view='home'; }
+  else if(view.startsWith('a:')){ if(!S.items.some(x=>!hid(x)&&x.type==='song'&&(artistOf(x)||'Other').toLowerCase()===view.slice(2).toLowerCase())) view='artists'; }
+  else if(view.startsWith('b:')){ if(!S.items.some(x=>!hid(x)&&(x.alb||'').toLowerCase()===view.slice(2).toLowerCase())) view='albums'; }
   else if(!['home','all','fav','q','artists','albums'].includes(view)&&!S.kp.some(p=>p.id===view)) view='home';
   renderTabs(); renderNav(); $('tabs').style.display=qs?'none':'';
   const g=$('grid'); g.textContent=''; $('tools').textContent='';
@@ -661,7 +702,7 @@ function render(){
   if(!qs&&(view==='artists'||view==='albums')){
     const isA=view==='artists', gs=new Map();
     S.items.forEach(x=>{
-      if(x.bad||x.type!=='song') return;
+      if(hid(x)||x.type!=='song') return;
       const n=isA?(artistOf(x)||'Other'):x.alb; if(!n) return;
       const k=n.toLowerCase(); if(!gs.has(k)) gs.set(k,{n,id:x.id,c:0}); gs.get(k).c++;
     });
@@ -676,10 +717,10 @@ function render(){
     e.textContent=isA?'No artists yet. Ask a grown-up to add some music.':'No albums yet. Ask a grown-up to tap “Look up artists & albums”.';
     return;
   }
-  if(!qs&&view==='home'&&S.items.some(x=>x.group&&!x.bad)){
+  if(!qs&&view==='home'&&S.items.some(x=>x.group&&!hid(x))){
     const gs=new Map();
     S.items.forEach(x=>{
-      if(x.bad||x.type!=='song'||!x.group) return;
+      if(hid(x)||x.type!=='song'||!x.group) return;
       const n=x.group; if(!gs.has(n)) gs.set(n,{n,id:x.id,c:0}); gs.get(n).c++;
     });
     let gi=0;
@@ -868,38 +909,7 @@ function askPin(cb){
 }
 function openParent(){if(autoOn()) purgeBad(); renderParent(); $('addMsg').textContent=''; $('parD').showModal();}
 function renderParent(){
-  const ul=$('plist'); ul.textContent='';
-  if(!S.items.length){const li=document.createElement('li'); li.textContent='Nothing added yet.'; ul.append(li);}
-  S.items.forEach((it,i)=>{
-    const li=document.createElement('li'), t=document.createElement('span'), b=document.createElement('button');
-    t.textContent=(it.type==='list'?'Playlist: ':'')+it.name+(it.bad?' (won’t play here)':'');
-    b.textContent='Remove'; b.setAttribute('aria-label','Remove '+it.name);
-    b.onclick=()=>{
-      bury(it.id); S.items.splice(i,1); save(); resetQ();
-      if(i===cur){cur=-1; if(pReady) player.stopVideo(); resetBar();}
-      else if(i<cur) cur--;
-      render(); renderParent();
-    };
-    if(it.type==='list'){
-      const sb=document.createElement('button'); sb.textContent='Show songs';
-      sb.onclick=()=>importList(it.id,it.name==='Playlist'?'':it.name);
-      li.append(t,sb,b);
-    } else{
-      li.append(t);
-      if(it.bad){const fb=document.createElement('button'); fb.textContent='Find replacement'; fb.onclick=()=>findSub(i); li.append(fb);}
-      li.append(b);
-      if(it.bad&&it.subs&&it.subs.length){
-        const box=document.createElement('div'); box.className='subs';
-        it.subs.forEach(sb=>{
-          const r=document.createElement('div'), lab=document.createElement('span'), u=document.createElement('button'), pv=document.createElement('a');
-          lab.textContent=sb.name+' — '+sb.by; pv.href=vurl(sb.id); pv.target='_blank'; pv.rel='noopener'; pv.textContent='Preview';
-          u.textContent='Use'; u.onclick=()=>useSub(i,sb); r.append(lab,pv,u); box.append(r);
-        });
-        li.append(box);
-      }
-    }
-    ul.append(li);
-  });
+  renderLib(); renderHeld();
   const kl=$('kpl'); kl.textContent='';
   if(!S.kp.length){const li=document.createElement('li'); li.textContent='No lists made yet.'; kl.append(li);}
   S.kp.forEach(p=>{
@@ -914,7 +924,7 @@ function renderParent(){
   $('srchState').textContent=S.apiKey?'🔍 Song search is ON for this device.':'🔍 Song search is OFF on this device. Save your YouTube key below to turn it on.';
   $('copyKey').hidden=!S.apiKey; if(!S.apiKey) $('keyBox').open=true;
   const yl=$('ytLinks'); yl.textContent='';
-  const ids=S.items.filter(x=>x.type==='song'&&!x.bad).map(x=>x.id);
+  const ids=S.items.filter(x=>x.type==='song'&&!hid(x)).map(x=>x.id);
   for(let i=0;i<ids.length;i+=50){
     const a=document.createElement('a'); a.target='_blank'; a.rel='noopener';
     a.href='https://www.youtube.com/watch_videos?video_ids='+ids.slice(i,i+50).join(',');
@@ -1011,8 +1021,8 @@ async function addSongs(items,l,label){
   S.items=S.items.filter(x=>!(x.type==='list'&&x.id===l));
   save(); resetQ(); render(); renderParent();
   const nb=await checkEmbeds(true,true);
-  const dup=items.length-fresh.length;
-  m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+'.'+(nb?' '+nb+' can’t play in apps, so they’re hidden from the kids.':'');
+  const dup=items.length-fresh.length, heldN=S.items.filter(x=>x.xw&&fresh.some(f=>f.id===x.id)).length;
+  m.textContent='Added '+n+' song'+(n===1?'':'s')+' under “'+group+'”'+(dup?' ('+dup+' already in the library)':'')+'.'+(nb?' '+nb+' can’t play in apps, so they’re hidden from the kids.':'')+(heldN?' '+heldN+' held back for words in the title.':'')+(xwOn()&&S.xwLy!==false?' Lyrics are being checked in the background.':'');
   return true;
 }
 $('add').onclick=async()=>{
@@ -1029,7 +1039,7 @@ $('add').onclick=async()=>{
   $('url').value=''; $('nm').value=''; m.textContent='Added “'+title+'”. Checking it plays…';
   render(); renderParent();
   const nb=await checkEmbeds(true,true), mine=S.items.find(x=>x.id===p.id);
-  m.textContent=(nb&&(!mine||mine.bad))?'“'+title+'” can’t play in apps, so I left it out.':'Added “'+title+'”.';
+  m.textContent=(nb&&(!mine||mine.bad))?'“'+title+'” can’t play in apps, so I left it out.':(mine&&mine.xw)?'Added “'+title+'”, but it’s held back because of words in its title. Tap Allow under “Held back” if you’re happy with it.':'Added “'+title+'”.';
 };
 $('saveKey').onclick=()=>{
   S.apiKey=$('apiKey').value.trim(); save();
@@ -1136,11 +1146,11 @@ async function findSub(i,quiet){
   const it=S.items[i], m=$('addMsg');
   if(!S.apiKey){m.textContent='Save a YouTube key first (see “Playlist not importing?”).'; return false;}
   if(!quiet) m.textContent='Looking for a replacement…';
-  const q=it.name.replace(/\(.*?\)|\[.*?\]/g,'').trim()+(it.why==='explicit'?' clean version':'');
+  const q=it.name.replace(/\(.*?\)|\[.*?\]/g,'').trim()+((it.why==='explicit'||it.xw)?' clean version':'');
   try{
     const r=await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&videoCategoryId=10&safeSearch=strict&maxResults=4&q='+encodeURIComponent(q)+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
     if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
-    it.subs=(j.items||[]).filter(v=>v.id&&v.id.videoId&&v.id.videoId!==it.id&&!/\bexplicit\b/i.test(v.snippet.title)&&!S.items.some(x=>x.id===v.id.videoId))
+    it.subs=(j.items||[]).filter(v=>v.id&&v.id.videoId&&v.id.videoId!==it.id&&!/\bexplicit\b/i.test(v.snippet.title)&&!xwFind(v.snippet.title).length&&!S.items.some(x=>x.id===v.id.videoId))
       .map(v=>({id:v.id.videoId,name:dec(v.snippet.title),by:dec(v.snippet.channelTitle)}));
     save(); renderParent();
     if(!quiet) m.textContent=it.subs.length?'Check the options below, then tap Use.':'No replacement found. You can remove it or paste a link.';
@@ -1150,7 +1160,7 @@ async function findSub(i,quiet){
 function useSub(i,sb){
   const it=S.items[i], old=it.id;
   bury(old); delete it.src;
-  it.id=sb.id; it.name=sb.name; it.by=sb.by; delete it.art; delete it.alb; delete it.noalb; delete it.bad; delete it.subs; delete it.lv;
+  it.id=sb.id; it.name=sb.name; it.by=sb.by; delete it.art; delete it.alb; delete it.noalb; delete it.bad; delete it.subs; delete it.lv; delete it.xw; delete it.xwT; delete it.xwL; delete it.xwc; delete it.okx; delete it.nolyr;
   S.favs=S.favs.map(x=>x===old?sb.id:x);
   S.kp.forEach(p=>{p.songs=p.songs.map(x=>x===old?sb.id:x);});
   save(); resetQ(); render(); renderParent();
@@ -1188,7 +1198,7 @@ function openPick(tg){
   $('pickDel').hidden=!!p.q;
   $('pickT').textContent=p.icon+' '+p.name+': tap songs to add';
   const g=$('pickG'); g.textContent='';
-  S.items.filter(x=>x.type==='song'&&!x.bad).forEach(x=>{
+  S.items.filter(x=>x.type==='song'&&!hid(x)).forEach(x=>{
     const b=document.createElement('button'); b.className='pk'+(p.songs.includes(x.id)?' sel':'');
     const im=new Image(); im.alt=''; im.src='https://i.ytimg.com/vi/'+x.id+'/mqdefault.jpg';
     const t=document.createElement('span'); t.textContent=x.name; b.append(im,t);
@@ -1518,7 +1528,7 @@ function reqAdd(i,v){
   $('reqMsg').textContent='Added “'+v.name+'”.';
   checkEmbeds(true,true);
 }
-{const _p=renderParent; renderParent=function(){_p(); renderReq(); renderAsk(); badge();};}
+{const _p=renderParent; renderParent=function(){xwSweep(); _p(); renderReq(); renderAsk(); badge(); setTimeout(xwScan,800);};}
 /* ---------- search all songs (text only, filtered) + remote approval ---------- */
 const BAD=/\b(fuck\w*|f\*+k\w*|shit\w*|sh\*t\w*|bitch\w*|b\*tch\w*|ass|asses|asshole\w*|dick\w*|cock\w*|pussy|cunt\w*|nigg\w*|fag\w*|whore\w*|slut\w*|bastard\w*|porn\w*|sex|sexy|sexual|nude|naked|nsfw|drug\w*|cocaine|heroin|weed|kill\w*|murder\w*|suicid\w*|damn\w*|hell|piss\w*|tits?|boobs?|horny|twerk\w*|stripper\w*|hoes?|thot|rape\w*|bdsm|molly|xxx)\b/i;
 const EXP=/\b(explicit|uncensored|dirty|nsfw)\b/i;
@@ -1553,7 +1563,7 @@ async function moreSearch(q){
     const r=await fetch('https://www.googleapis.com/youtube/v3/search?part=snippet&type=video&videoEmbeddable=true&videoSyndicated=true&videoCategoryId=10&safeSearch=strict&maxResults=25&q='+encodeURIComponent(q)+'&key='+encodeURIComponent(S.apiKey)), j=await r.json();
     if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
     let c=(j.items||[]).filter(v=>v.id&&v.id.videoId).map(v=>({id:v.id.videoId,name:dec(v.snippet.title),by:dec(v.snippet.channelTitle),d:v.snippet.description||''}));
-    c=c.filter(v=>!BAD.test(v.name)&&!BAD.test(v.by)&&!EXP.test(v.name+' '+v.d.slice(0,300)));
+    c=c.filter(v=>!BAD.test(v.name)&&!BAD.test(v.by)&&!EXP.test(v.name+' '+v.d.slice(0,300))&&!xwFind(v.name).length);
     if(c.length){
       const rr=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status,contentDetails&id='+c.map(v=>v.id).join(',')+'&key='+encodeURIComponent(S.apiKey)), jj=await rr.json();
       if(!rr.ok) throw new Error('check failed');
@@ -1591,6 +1601,199 @@ function renderAsk(){
   });
 }
 
+/* ---------- keep songs clean: swearing, sex words, violence, blasphemy ---------- */
+/*XW-START*/
+const XWR={
+  swear:/\b(?:\w*f+u+c+k\w*|f[*@#]+c?k\w*|\w*sh[i1]+t(?!ake)\w*|sh[*@#]+t\w*|\w*b[i1]tch\w*|b[*@#]tch\w*|cunt\w*|nigg\w*|n[*@#]+gg\w*|fag(?:s|got\w*)?|whore\w*|slut\w*|asshole\w*|a[*@#]+hole\w*|pussy|pussies|dick(?:s|head\w*)?|cock(?!-a-doodle|\s+robin)s?|bastard\w*|motherf\w*)\b/i,
+  mild:/\b(?:(?:your|my|his|her|their|ur|ya|that|dat)\s+ass(?:es)?|ass(?:es)?\s+(?:up|out|off|kicker|clown)|kick(?:ing|ed)?\s+ass|kiss(?:ing)?\s+ass|(?:bad|dumb|smart|fat|lazy|jack|half|hard)\s*ass\w*|goddamn\w*|damn|dammit|damnit|piss\w*|crap\w*|what\s+(?:the|in\s+the)\s+hell|(?:who|where|why|how)\s+the\s+hell|go\s+to\s+hell|bloody\s+hell|hell\s+(?:yeah|yes|no|of\s+a)|helluva)\b/i,
+  sex:/\b(?:sex|sexual\w*|porn\w*|orgasm\w*|blow\s*job\w*|hand\s*job\w*|cumshot\w*|cumming|erotic\w*|dildo\w*|vibrator|masturbat\w*|jerk(?:ing)?\s+off|penis|vagina\w*|clit\w*|tits|titties|boobs|horny|strip(?:per\w*|\s+club)|lap\s*dance|threesome|gang\s*bang|hookers?|anal|anus|boner|nudes|twerk\w*|hoes|thot|bdsm|xxx|nsfw|fetish|slutty)\b/i,
+  viol:/\b(?:suicid\w*|kill(?:s|ed|ing)?\s+(?:myself|yourself|himself|herself|themselves|ourselves|you|him|her|them|everyone|everybody|someone|somebody|people|ya)|kill\s+me|(?:slit|slash|cut|slitting|cutting)\s+(?:my|your|his|her)\s+(?:wrists?|throat|veins)|cut(?:ting)?\s+myself|hang(?:ing)?\s+(?:myself|yourself)|shoot(?:ing)?\s+(?:myself|yourself|you|him|her|them|everyone|everybody)|(?:blow|blew)\s+(?:my|your|his|her|their)\s+(?:brains|head)\s+(?:out|off)|stab(?:bing|bed)?\s+(?:myself|yourself|you|him|her|them|me)|drown(?:ing)?\s+(?:myself|yourself)|strangl\w*|choke\s+(?:you|him|her|them)|behead\w*|decapitat\w*|dismember\w*|mutilat\w*|murder\w*|massacre\w*|bloodbath|rape(?:d|s)?|raping|rapist\w*|torture\w*|(?:end|ending|take|taking)\s+(?:my|your)\s+(?:own\s+)?life|(?:want|wanna|wish|wished|wanted)\s+(?:to\s+)?(?:die|be\s+dead)|overdos\w*|pull(?:ed|ing)?\s+the\s+trigger|put\s+a\s+bullet|bleed(?:ing)?\s+out|burn(?:ing)?\s+(?:you|him|her|them)\s+alive|beat(?:ing)?\s+(?:you|him|her|them)\s+to\s+death|gory)\b/i,
+  blas:/\b(?:god\s*-?\s*damn\w*|damn(?:ed|ing)?\s+(?:god|jesus|christ|the\s+lord)|(?:fuck\w*|f[*@#]+k\w*|shit|sh[*@#]+t|screw|piss\s+on)\s+(?:god|jesus|christ|the\s+lord)|(?:god|jesus|christ|the\s+lord)\s+(?:fuck\w*|f[*@#]+k\w*|damn\w*|sucks)|jesus\s+(?:fuck\w*|freak\w*|f[*@#]+k\w*)\s+christ|oh\s+my\s+(?:fuck\w*|f[*@#]+k\w*|damn\w*)\s+god|godforsaken|burn\s+(?:the\s+)?(?:church|bible)|(?:hail|praise|worship)\s+satan)\b/i,
+  blasX:/\b(?:oh\s+my\s+god|omg|omfg|jesus\s+christ|christ\s+almighty|for\s+christ'?s\s+sake|good\s+lord|jeez|geez)\b/i,
+  wor:/\b(?:hallelujah|alleluia|hosanna|amen|praise|worship|savior|saviour|redeemer|salvation|grace|holy|almighty|lord|jesus|christ|cross|resurrect\w*|risen|church|prayer|pray|bless\w*|heaven|faith|glory)\b/gi
+};
+const xwOn=()=>S.xwOn!==false;
+const xwCatOn=c=>c==='violence'?S.xwViol!==false:c==='blasphemy'?S.xwBlas!==false:true;
+const xwWorship=s=>new Set(s.toLowerCase().match(XWR.wor)||[]).size>=5;
+function xwFind(t,ly){
+  const s=String(t||'').replace(/[’‘]/g,"'").replace(/[\r\n]+/g,' | ');
+  if(!s.trim()) return [];
+  const o=[], R=XWR;
+  if(R.swear.test(s)||(S.xwMild!==false&&R.mild.test(s))) o.push('swear');
+  if(R.sex.test(s)) o.push('sex');
+  if(S.xwViol!==false&&R.viol.test(s)) o.push('violence');
+  if(S.xwBlas!==false&&(R.blas.test(s)||(ly&&S.xwBlasX&&R.blasX.test(s)&&!xwWorship(s)))) o.push('blasphemy');
+  return o;
+}
+/*XW-END*/
+
+/* work out which songs are held back (title now, lyrics once they have been scanned) */
+function xwSweep(){
+  let ch=false;
+  S.items.forEach(x=>{
+    if(x.type!=='song') return;
+    let t=[], l=[];
+    if(xwOn()&&!x.okx){t=xwFind(x.name); if(S.xwLy!==false) l=(x.xwL||[]).filter(xwCatOn);}
+    const all=[...new Set([...t,...l])];
+    if(all.join()!==(x.xw||[]).join()||t.join()!==(x.xwT||[]).join()){
+      ch=true;
+      if(all.length){x.xw=all; x.xwT=t;} else {delete x.xw; delete x.xwT;}
+    }
+  });
+  if(ch){save(); resetQ(); render();}
+  return ch;
+}
+/* look up lyrics for every song in the background and remember what was found */
+let xwBusy=false, xwWait=0;
+async function xwScan(){
+  if(xwBusy||!xwOn()||S.xwLy===false||Date.now()<xwWait) return;
+  xwBusy=true; let ch=false, n=0;
+  try{
+    for(;;){
+      if(!xwOn()||S.xwLy===false) break;
+      const it=S.items.find(x=>x.type==='song'&&!x.bad&&!x.okx&&!x.xwc);
+      if(!it) break;
+      let r; try{r=await lrFind(it,0);}catch(e){xwWait=Date.now()+60000; break;}
+      if(!S.items.includes(it)) continue;
+      it.xwc=1;
+      const c=(r&&r.xw)||[];
+      if(c.join()!==(it.xwL||[]).join()){if(c.length) it.xwL=c; else delete it.xwL; ch=true;}
+      if(++n%10===0) save();
+      await new Promise(z=>setTimeout(z,350));
+    }
+  }finally{xwBusy=false;}
+  save();
+  if(ch){xwSweep(); renderParent();}
+}
+function xwBlockNow(it){
+  $('now').textContent='“'+it.name+'” is held back because of its lyrics. Skipping…';
+  try{player.pauseVideo();}catch(e){}
+  const n=nextPlayable();
+  if(n===null||n===cur){try{player.stopVideo();}catch(e){} return;}
+  setTimeout(()=>play(n),900);
+}
+function xwChanged(){S.items.forEach(x=>{delete x.xwc;}); save(); xwSweep(); renderParent(); setTimeout(xwScan,500);}
+
+const XWL={swear:'swearing',sex:'sexual words',violence:'violent or self-harm themes',blasphemy:'blasphemy'};
+const xwNames=a=>a.map(c=>XWL[c]||c).join(', ');
+function xwReason(it){
+  const p=[], t=it.xwT||[], l=(it.xwL||[]).filter(xwCatOn);
+  if(t.length) p.push(xwNames(t)+' in the title');
+  if(l.length) p.push(xwNames(l)+' in the lyrics');
+  const s=p.join(' · '); return s?s[0].toUpperCase()+s.slice(1):'Held back';
+}
+function xwAllow(it){it.okx=true; delete it.xw; delete it.xwT; save(); resetQ(); render(); renderParent(); toast('Allowed “'+it.name+'” ✓');}
+function xwReblock(it){delete it.okx; delete it.xwc; save(); xwSweep(); renderParent(); setTimeout(xwScan,500);}
+function rmItem(it){
+  const i=S.items.indexOf(it); if(i<0) return;
+  bury(it.id); S.items.splice(i,1); save(); resetQ();
+  if(i===cur){cur=-1; if(pReady) player.stopVideo(); resetBar();}
+  else if(i<cur) cur--;
+  render(); renderParent();
+}
+function subsBox(it){
+  const box=document.createElement('div'); box.className='subs';
+  it.subs.forEach(sb=>{
+    const r=document.createElement('div'), lab=document.createElement('span'), u=document.createElement('button'), pv=document.createElement('a');
+    lab.textContent=sb.name+' — '+sb.by; pv.href=vurl(sb.id); pv.target='_blank'; pv.rel='noopener'; pv.textContent='Preview';
+    u.textContent='Use'; u.onclick=()=>useSub(S.items.indexOf(it),sb); r.append(lab,pv,u); box.append(r);
+  });
+  return box;
+}
+function renderHeld(){
+  const box=$('xwBox'), ul=$('xwL'), held=S.items.filter(x=>x.xw);
+  box.hidden=!held.length; ul.textContent='';
+  if(!held.length) return;
+  $('xwHead').textContent='Held back 🚫 ('+held.length+')';
+  held.slice(0,30).forEach(it=>{
+    const li=document.createElement('li'), t=document.createElement('span'), sm=document.createElement('small');
+    t.textContent=it.name; sm.textContent=xwReason(it); t.append(sm); li.append(t);
+    li.append(mk('Allow',()=>xwAllow(it),'sm'));
+    if(S.apiKey) li.append(mk('Clean version',()=>findSub(S.items.indexOf(it)),'sm'));
+    li.append(mk('Remove',()=>rmItem(it),'sm'));
+    if(it.subs&&it.subs.length) li.append(subsBox(it));
+    ul.append(li);
+  });
+  if(held.length>30){const li=document.createElement('li'); li.textContent='…and '+(held.length-30)+' more. Open “In the library” below and choose “Held back”.'; ul.append(li);}
+}
+
+/* ---------- the library in the Grown-ups area: tap to open, sort, filter ---------- */
+let libLim=100;
+function libIdx(){
+  const q=($('libQ').value||'').toLowerCase().trim(), f=$('libF').value, sv=S.lsort||'new';
+  const r=S.items.map((x,i)=>i).filter(i=>{
+    const x=S.items[i];
+    if(f==='songs'&&x.type!=='song') return false;
+    if(f==='lists'&&x.type!=='list') return false;
+    if(f==='held'&&!x.xw) return false;
+    if(f==='bad'&&!x.bad) return false;
+    if(f==='allowed'&&!x.okx) return false;
+    if(q&&!((x.name||'')+' '+(x.by||'')+' '+(x.group||'')+' '+(x.art||'')).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  const nm=i=>S.items[i].name||'', cmp=(a,b)=>String(a).localeCompare(String(b),undefined,{sensitivity:'base'});
+  if(sv==='new') r.reverse();
+  else if(sv==='az') r.sort((a,b)=>cmp(nm(a),nm(b)));
+  else if(sv==='za') r.sort((a,b)=>cmp(nm(b),nm(a)));
+  else if(sv==='art') r.sort((a,b)=>cmp(artistOf(S.items[a])||'~',artistOf(S.items[b])||'~')||cmp(nm(a),nm(b)));
+  else if(sv==='grp') r.sort((a,b)=>cmp(S.items[a].group||'~',S.items[b].group||'~')||(a-b));
+  return r;
+}
+function renderLib(){
+  const held=S.items.filter(x=>x.xw).length;
+  $('libSum').textContent='In the library ('+S.items.length+')'+(held?' · '+held+' held back':'');
+  const ul=$('plist'); ul.textContent='';
+  if(!$('libBox').open) return;
+  const idx=libIdx(), f=$('libF').value, q=$('libQ').value.trim(), filt=(f!=='all'||!!q);
+  $('libCnt').textContent=filt?idx.length+' shown':'';
+  if(!idx.length){const li=document.createElement('li'); li.textContent=S.items.length?'Nothing matches.':'Nothing added yet.'; ul.append(li);}
+  idx.slice(0,libLim).forEach(i=>{
+    const it=S.items[i], li=document.createElement('li'), t=document.createElement('span'), sm=document.createElement('small');
+    t.textContent=(it.type==='list'?'Playlist: ':'')+it.name;
+    const info=[];
+    if(it.type==='song'){const a=artistOf(it); if(a) info.push(a); if(it.group) info.push(it.group);}
+    if(it.bad) info.push('won’t play here');
+    if(it.xw) info.push('held back: '+xwNames(it.xw));
+    if(it.okx) info.push('allowed by you');
+    sm.textContent=info.join(' · '); t.append(sm); li.append(t);
+    if(it.type==='list') li.append(mk('Show songs',()=>importList(it.id,it.name==='Playlist'?'':it.name),'sm'));
+    else{
+      if(it.xw) li.append(mk('Allow',()=>xwAllow(it),'sm'));
+      else if(it.okx) li.append(mk('Block again',()=>xwReblock(it),'sm'));
+      if(it.bad) li.append(mk('Find replacement',()=>findSub(S.items.indexOf(it)),'sm'));
+    }
+    const rb=mk('Remove',()=>rmItem(it),'sm'); rb.setAttribute('aria-label','Remove '+it.name); li.append(rb);
+    if((it.bad||it.xw)&&it.subs&&it.subs.length) li.append(subsBox(it));
+    ul.append(li);
+  });
+  const more=idx.length-libLim;
+  $('libMore').hidden=more<=0; $('libMore').textContent='Show more ('+more+' left)';
+  $('libDel').hidden=!(filt&&idx.length); $('libDel').textContent='Remove these '+idx.length;
+}
+function xwInit(){
+  lyFix();
+  [['xwOn','xwOn'],['xwMild','xwMild'],['xwViol','xwViol'],['xwBlas','xwBlas'],['xwLy','xwLy']].forEach(([id,k])=>{
+    const e=$(id); e.checked=S[k]!==false; e.onchange=()=>{S[k]=e.checked; xwChanged();};
+  });
+  const bx=$('xwBlasX'); bx.checked=!!S.xwBlasX; bx.onchange=()=>{S.xwBlasX=bx.checked; xwChanged();};
+  $('libSort').value=S.lsort||'new';
+  $('libSort').onchange=()=>{S.lsort=$('libSort').value; save(); libLim=100; renderLib();};
+  $('libF').onchange=()=>{libLim=100; renderLib();};
+  $('libQ').oninput=()=>{libLim=100; renderLib();};
+  $('libMore').onclick=()=>{libLim+=100; renderLib();};
+  $('libBox').addEventListener('toggle',()=>{if($('libBox').open) renderLib();});
+  $('libDel').onclick=()=>{
+    const idx=libIdx(); if(!idx.length) return;
+    if(!confirm('Remove '+idx.length+' item'+(idx.length===1?'':'s')+' from the library? They won’t come back when playlists refresh.')) return;
+    const set=new Set(idx.map(i=>S.items[i])), here=cur>=0?S.items[cur]:null;
+    set.forEach(x=>bury(x.id));
+    S.items=S.items.filter(x=>!set.has(x));
+    if(here&&!set.has(here)) cur=S.items.indexOf(here); else {cur=-1; if(pReady) try{player.stopVideo();}catch(e){} resetBar();}
+    save(); resetQ(); render(); renderParent();
+  };
+  xwSweep(); setTimeout(xwScan,4000);
+}
+
 /* ---------- lyrics (LRCLIB) ---------- */
 let LY={st:'idle',lines:[],els:[],sync:false,cur:-1,busy:false}, shTab=null, lyTok=0;
 const lyC={};
@@ -1614,16 +1817,49 @@ function parseLrc(t){
   });
   return out.sort((a,b)=>a.t-b.t);
 }
+/* ---------- keep lyrics and lyric videos in the same language/version as the song ---------- */
+const SCR=[['ar',/\p{Script=Arabic}/gu],['cy',/\p{Script=Cyrillic}/gu],['cjk',/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/gu],['ko',/\p{Script=Hangul}/gu],['dev',/\p{Script=Devanagari}/gu],['th',/\p{Script=Thai}/gu],['he',/\p{Script=Hebrew}/gu],['gr',/\p{Script=Greek}/gu],['la',/\p{Script=Latin}/gu]];
+function scriptOf(t){const s=String(t||''); let best='', n=0; for(const [k,re] of SCR){const c=(s.match(re)||[]).length; if(c>n){n=c; best=k;}} return best;}
+const songScript=it=>scriptOf((it.name||'')+' '+(artistOf(it)||'')+' '+(it.by||''))||'la';
+const lyrScriptOk=(want,sg)=>!sg||sg==='la'||sg===want;
+const LANGW=/\b(arabic|hindi|spanish|latino|french|german|italian|russian|turkish|korean|japanese|chinese|mandarin|cantonese|portuguese|brazilian|dutch|polish|persian|urdu|tamil|telugu|thai|vietnamese|indonesian|hebrew|greek|dubbed|dub|translated|translation|subtitulada|traducida|traduction|legendado)\b/i;
+const isoSec=s=>{const m=/^PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?$/.exec(s||''); return m?(+m[1]||0)*3600+(+m[2]||0)*60+(+m[3]||0):0;};
+function vidFits(it,v){
+  const want=songScript(it), t=(v.name||'')+' '+(v.by||''), sg=scriptOf(t);
+  if(sg&&sg!=='la'&&sg!==want) return false;
+  if(want==='la'&&(t.match(/[^\p{Script=Latin}\p{Script=Common}\p{Script=Inherited}]/gu)||[]).length>=2) return false;
+  if(LANGW.test(v.name)&&!LANGW.test(it.name)) return false;
+  return true;
+}
+/* one-time tidy-up: forget lyric videos and artist/album names that came from the wrong language */
+function lyFix(){
+  if(S.lyv===2) return; S.lyv=2;
+  S.items.forEach(x=>{
+    delete x.lv; if(x.type!=='song') return;
+    if(songScript(x)==='la'){
+      if(x.art&&scriptOf(x.art)!=='la') delete x.art;
+      if(x.alb&&scriptOf(x.alb)!=='la'){delete x.alb; delete x.noalb;}
+    }
+  });
+  save();
+}
 function lrPick(it,list,dur){
   if(!Array.isArray(list)) return null;
   const full=nrm(cleanTitle(it.name)), trk=nrm(cleanTitle(quoted(it.name))||cleanTitle(trackPart(it.name)))||full, who=nrm(artistOf(it)+' '+(it.by||'')+' '+it.name);
   const known=dur>45;
   let c=list.filter(r=>r&&!r.instrumental&&(r.syncedLyrics||r.plainLyrics)&&r.trackName);
+  const want=songScript(it), exArt=nrm(artistOf(it));
+  c=c.filter(r=>{
+    const sg=scriptOf((r.plainLyrics||r.syncedLyrics||'').replace(/\[[^\]]*\]/g,' '));
+    if(!lyrScriptOk(want,sg)&&!(want==='la'&&exArt&&nrm(r.artistName)===exArt)) return false;
+    if(dur>45&&r.duration&&Math.abs(r.duration-dur)>30) return false;
+    return true;
+  });
   c=c.filter(r=>{const t=nrm(r.trackName); return t.length>0&&(full.includes(t)||(trk.length>1&&t.includes(trk)));});
   const am=c.filter(r=>{const a=nrm(r.artistName); return !a||who.includes(a)||a.split(' ').some(w=>w.length>3&&who.includes(w));});
   c=am.length?am:c.filter(r=>nrm(r.trackName)===trk&&known&&r.duration&&Math.abs(r.duration-dur)<=4);
   if(!c.length) return null;
-  const sc=r=>(known&&r.duration?Math.abs(r.duration-dur):0)+(r.syncedLyrics?0:15)+(nrm(r.trackName)===trk?0:8);
+  const sc=r=>(known&&r.duration?Math.abs(r.duration-dur):0)+(r.syncedLyrics?0:15)+(nrm(r.trackName)===trk?0:8)+(exArt&&nrm(r.artistName)===exArt?0:6);
   c.sort((a,b)=>sc(a)-sc(b));
   const r=c[0], far=known&&r.duration&&Math.abs(r.duration-dur)>15;
   let lines=null, sync=false;
@@ -1633,21 +1869,22 @@ function lrPick(it,list,dur){
     if(!p||far&&!r.plainLyrics) return null;
     lines=maskLy(p).split(/\r?\n/).map(x=>({t:0,x:x.trim()}));
   }
-  return {lines,sync,alb:r.albumName||'',art:r.artistName||''};
+  return {lines,sync,alb:r.albumName||'',art:r.artistName||'',xw:xwFind((r.plainLyrics||r.syncedLyrics||'').replace(/\[[^\]]*\]/g,' '),true)};
 }
 async function lrGet(q){
   const ac=new AbortController(), to=setTimeout(()=>ac.abort(),9000);
   try{const r=await fetch('https://lrclib.net/api/search?'+q,{signal:ac.signal}); if(!r.ok) throw new Error('lrclib '+r.status); return await r.json();}
   finally{clearTimeout(to);}
 }
-async function ovhFind(ar,tr){
+async function ovhFind(ar,tr,want){
   const ac=new AbortController(), to=setTimeout(()=>ac.abort(),7000);
   try{
     const r=await fetch('https://api.lyrics.ovh/v1/'+enc(ar)+'/'+enc(tr),{signal:ac.signal}); if(!r.ok) return null;
     const j=await r.json(); let p=String((j&&j.lyrics)||'').replace(/\r/g,'').trim();
     p=p.replace(/^Paroles de la chanson[^\n]*\n+/i,'');
     if(p.length<40) return null;
-    return {lines:maskLy(p).split('\n').map(x=>({t:0,x:x.trim()})),sync:false,alb:'',art:''};
+    if(want&&!lyrScriptOk(want,scriptOf(p))) return null;
+    return {lines:maskLy(p).split('\n').map(x=>({t:0,x:x.trim()})),sync:false,alb:'',art:'',xw:xwFind(p,true)};
   }catch(e){return null;} finally{clearTimeout(to);}
 }
 async function lrFind(it,dur,noOvh){
@@ -1662,11 +1899,11 @@ async function lrFind(it,dur,noOvh){
   for(const q of [...new Set(tries)]){
     try{const p=lrPick(it,await lrGet(q),dur); reached=true; if(p) return p;}catch(e){err=e;}
   }
-  if(!noOvh&&ar&&tr){const p=await ovhFind(ar,tr); if(p) return p;}
+  if(!noOvh&&ar&&tr){const p=await ovhFind(ar,tr,songScript(it)); if(p) return p;}
   if(!reached&&err) throw err;
   return null;
 }
-async function lyricVideo(it){
+async function lyricVideo(it,dur){
   if(!S.apiKey||S.lvOn===false||it.type!=='song'||it.lv===0) return false;
   const ar=artistOf(it), tr=cleanTitle(quoted(it.name))||cleanTitle(trackPart(it.name))||cleanTitle(it.name);
   if(!tr) return false;
@@ -1677,14 +1914,14 @@ async function lyricVideo(it){
     let c=(j.items||[]).filter(v=>v.id&&v.id.videoId&&v.id.videoId!==it.id)
       .map(v=>({id:v.id.videoId,name:dec(v.snippet.title),by:dec(v.snippet.channelTitle),d:v.snippet.description||''}))
       .filter(v=>/\blyrics?\b/i.test(v.name)&&nrm(v.name).includes(key)&&!BAD.test(v.name)&&!BAD.test(v.by)&&!EXP.test(v.name+' '+v.d.slice(0,300))
-        &&!/\b(karaoke|instrumental|cover|slowed|sped|reverb|nightcore|8d|remix|live|acoustic)\b/.test(nrm(v.name).replace(key,' ')));
+        &&!/\b(karaoke|instrumental|cover|slowed|sped|reverb|nightcore|8d|remix|live|acoustic)\b/.test(nrm(v.name).replace(key,' '))&&vidFits(it,v));
     const sc=v=>(who&&nrm(v.by+' '+v.name).includes(who)?2:0)+(/official/i.test(v.name+' '+v.by)?1:0)+(/lyric video/i.test(v.name)?1:0);
     c.sort((a,b)=>sc(b)-sc(a));
     if(c.length){
       const rr=await fetch('https://www.googleapis.com/youtube/v3/videos?part=status,contentDetails&id='+c.slice(0,6).map(v=>v.id).join(',')+'&key='+enc(S.apiKey)), jj=await rr.json();
       if(!rr.ok) throw new Error('check failed');
       const m=new Map((jj.items||[]).map(v=>[v.id,v]));
-      c=c.filter(v=>{const x=m.get(v.id); return x&&x.status&&x.status.embeddable!==false&&((x.contentDetails||{}).contentRating||{}).ytRating!=='ytAgeRestricted';});
+      c=c.filter(v=>{const x=m.get(v.id); if(!(x&&x.status&&x.status.embeddable!==false&&((x.contentDetails||{}).contentRating||{}).ytRating!=='ytAgeRestricted')) return false; const vd=isoSec((x.contentDetails||{}).duration); return !(dur>45&&vd&&Math.abs(vd-dur)>15);});
     }
     if(!c.length){it.lv=0; save(); return false;}
     it.lv=c[0].id; save(); return it.lv;
@@ -1713,18 +1950,22 @@ async function loadLyrics(){
   const it=S.items[cur]; if(!it||LY.st!=='load'||LY.busy) return;
   LY.busy=true; const tok=lyTok, id=it.id; let dur=0;
   try{dur=player.getDuration()||0;}catch(e){}
-  let r=lyC[id];
+  let r=it.nolyr?null:lyC[id];
   if(r===undefined){
     try{r=await lrFind(it,dur); lyC[id]=r;}
     catch(e){if(tok===lyTok){LY.busy=false; LY.st='err'; LY.why=(e&&e.name==='AbortError')?'took too long':String(e&&e.message||e); paintLyr();} return;}
   }
   if(tok!==lyTok) return;
   LY.busy=false; LY.dur=dur; LY.tries=(LY.tries||0);
+  if(r&&r.xw&&r.xw.length&&xwOn()&&S.xwLy!==false&&!it.okx){
+    it.xwL=r.xw; it.xwc=1; save(); xwSweep();
+    if(it.xw){xwBlockNow(it); return;}
+  }
   if(!r){
     LY.st='none';
     if(S.apiKey&&S.lvOn!==false&&it.type==='song'&&it.lv!==0){
       LY.st='lvs'; paintLyr();
-      lyricVideo(it).then(id=>{
+      lyricVideo(it,dur).then(id=>{
         if(tok!==lyTok||S.items[cur]!==it) return;
         if(id&&!userPaused) useLv(it,id); else {LY.st='none'; paintLyr();}
       });
@@ -1753,6 +1994,9 @@ function paintLyr(){
     b.append(p);
   });
   LY.els=[...b.children]; LY.cur=-1; paintAdj(); b.scrollTop=0; tickLyrics(true);
+  {const np=document.createElement('p'); np.className='note';
+   np.append(mk('Wrong words? Hide them',()=>{const it=S.items[cur]; if(!it) return; it.nolyr=1; delete lyC[it.id]; save(); LY.st='load'; LY.busy=false; paintLyr(); loadLyrics();},'chip retry'));
+   b.append(np);}
 }
 function paintAdj(){
   const it=S.items[cur], o=(it&&it.off)||0;
@@ -1837,7 +2081,7 @@ document.addEventListener('visibilitychange',()=>{if(document.hidden) lockUp();}
 addEventListener('pagehide',lockUp);
 $('bkUp').addEventListener('click',()=>{skipLock=Date.now()+180000;});
 {const _d=decide; decide=function(v,y){_d(v,y); if(y) checkEmbeds(true,true);};}
-paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy();
+paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy(); xwInit();
 if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>21600000) syncAll(true);
 if(autoOn()) purgeBad();
 checkEmbeds(true,!S.apiKey||S.lastCheck===today());

@@ -848,16 +848,35 @@ $('shuf').onclick=()=>{
 };
 $('pp').onclick=toggle; $('shield').onclick=toggle; $('next').onclick=nextBtn; $('prev').onclick=prevBtn;
 
-/* keep playing when the app is switched away (browser pauses the embed on the switch) */
+/* Background play: when you leave Chrome (home button, other app, screen off) the browser/YouTube pauses the embed.
+   We only undo THAT pause (within a few seconds of leaving). Any pause while you're in Chrome, or any pause later on
+   (notification / lock-screen button), counts as a real pause and is left alone. */
+let hiddenAt=0, hideTimer=null, autoPaused=false;
+function stopHideTimer(){clearInterval(hideTimer); hideTimer=null;}
 function keepGoing(){
+  stopHideTimer();
   if(!pReady||userPaused||cur<0||limitHit()) return;
-  [0,200,600,1500].forEach(ms=>setTimeout(()=>{
-    try{ if(!userPaused&&player.getPlayerState()!==1) player.playVideo(); }catch(e){}
-  },ms));
+  let n=0;
+  hideTimer=setInterval(()=>{
+    if(!document.hidden||userPaused||limitHit()||++n>20){stopHideTimer(); return;}   /* ~5 seconds */
+    try{ if(player.getPlayerState()!==1){autoPaused=true; player.playVideo();} }catch(e){}
+  },250);
 }
-document.addEventListener('visibilitychange',()=>{ if(document.hidden) keepGoing(); });
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){hiddenAt=Date.now(); autoPaused=false; keepGoing();}
+  else{
+    stopHideTimer();
+    /* came back and it got stopped by the switch (not by you): carry on */
+    try{ if(autoPaused&&!userPaused&&cur>=0&&!limitHit()&&player.getPlayerState()===2) player.playVideo(); }catch(e){}
+    autoPaused=false;
+  }
+});
 function onState(e){
-  if(e.data===2&&document.hidden&&!userPaused) keepGoing();
+  if(e.data===2&&!userPaused){
+    if(document.hidden&&Date.now()-hiddenAt<5000) keepGoing();   /* paused by leaving Chrome: resume */
+    else if(!limitHit()&&cur>=0) userPaused=true;                /* a real pause: respect it */
+  }
+  if(e.data===1&&!document.hidden) autoPaused=false;
   const playing=e.data===1; setIcon(playing); document.body.classList.toggle('playing',playing); if(playing) $('pp').classList.remove('nudge');
   try{navigator.mediaSession.playbackState=playing?'playing':'paused';}catch(x){}
   if(playing){errs=0; startTick(); if(mutedKick){mutedKick=false; setTimeout(()=>{try{player.unMute();}catch(x){}},400);}} else stopTick();
@@ -1331,7 +1350,7 @@ function setSession(it){
 if('mediaSession' in navigator){
   const h=(a,f)=>{try{navigator.mediaSession.setActionHandler(a,f);}catch(e){}};
   h('play',()=>{userPaused=false; if(pReady) player.playVideo();}); h('pause',()=>{userPaused=true; if(pReady) player.pauseVideo();});
-  h('nexttrack',()=>nextBtn()); h('previoustrack',()=>prevBtn());
+  h('stop',()=>{userPaused=true; if(pReady) player.pauseVideo();}); h('nexttrack',()=>nextBtn()); h('previoustrack',()=>prevBtn());
 }
 /* ---------- screens, back button, swipe-up player ---------- */
 let inHist=false, shOpen=false, qOpen=false, pt=null;

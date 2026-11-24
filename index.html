@@ -851,30 +851,39 @@ $('pp').onclick=toggle; $('shield').onclick=toggle; $('next').onclick=nextBtn; $
 /* Background play: when you leave Chrome (home button, other app, screen off) the browser/YouTube pauses the embed.
    We only undo THAT pause (within a few seconds of leaving). Any pause while you're in Chrome, or any pause later on
    (notification / lock-screen button), counts as a real pause and is left alone. */
-let hiddenAt=0, hideTimer=null, autoPaused=false;
+let hiddenAt=0, hideTimer=null, autoPaused=false, pendTimer=null;
 function stopHideTimer(){clearInterval(hideTimer); hideTimer=null;}
 function keepGoing(){
   stopHideTimer();
   if(!pReady||userPaused||cur<0||limitHit()) return;
   let n=0;
   hideTimer=setInterval(()=>{
-    if(!document.hidden||userPaused||limitHit()||++n>20){stopHideTimer(); return;}   /* ~5 seconds */
+    if(!document.hidden||userPaused||limitHit()||++n>60){stopHideTimer(); return;}   /* ~9 seconds */
     try{ if(player.getPlayerState()!==1){autoPaused=true; player.playVideo();} }catch(e){}
-  },250);
+  },150);
+}
+function goneAway(){
+  hiddenAt=Date.now(); autoPaused=false;
+  if(pendTimer){clearTimeout(pendTimer); pendTimer=null;}   /* that pause was the switch, not you */
+  keepGoing();
 }
 document.addEventListener('visibilitychange',()=>{
-  if(document.hidden){hiddenAt=Date.now(); autoPaused=false; keepGoing();}
+  if(document.hidden) goneAway();
   else{
     stopHideTimer();
-    /* came back and it got stopped by the switch (not by you): carry on */
     try{ if(autoPaused&&!userPaused&&cur>=0&&!limitHit()&&player.getPlayerState()===2) player.playVideo(); }catch(e){}
     autoPaused=false;
   }
 });
+addEventListener('pagehide',goneAway);
 function onState(e){
+  if(e.data===1&&pendTimer){clearTimeout(pendTimer); pendTimer=null;}
   if(e.data===2&&!userPaused){
-    if(document.hidden&&Date.now()-hiddenAt<5000) keepGoing();   /* paused by leaving Chrome: resume */
-    else if(!limitHit()&&cur>=0) userPaused=true;                /* a real pause: respect it */
+    if(document.hidden&&Date.now()-hiddenAt<9000) keepGoing();   /* paused by leaving: resume */
+    else if(!document.hidden&&!pendTimer&&!limitHit()&&cur>=0){
+      /* paused while visible: wait a moment in case the app is just being switched away from */
+      pendTimer=setTimeout(()=>{pendTimer=null; if(!document.hidden&&!userPaused) userPaused=true;},900);
+    }
   }
   if(e.data===1&&!document.hidden) autoPaused=false;
   const playing=e.data===1; setIcon(playing); document.body.classList.toggle('playing',playing); if(playing) $('pp').classList.remove('nudge');

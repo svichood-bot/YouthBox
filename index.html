@@ -1720,26 +1720,31 @@ function xwSweep(){
 }
 /* look up lyrics for every song in the background and remember what was found */
 let xwBusy=false, xwWait=0;
+const xwClaim=new Set();
 async function xwScan(){
   if(xwBusy||!xwOn()||S.xwLy===false||Date.now()<xwWait) return;
-  xwBusy=true; let ch=false, n=0;
-  try{
+  xwBusy=true; let ch=false, n=0, failed=false;
+  const work=async()=>{
     for(;;){
-      if(!xwOn()||S.xwLy===false) break;
-      const it=S.items.find(x=>x.type==='song'&&!x.bad&&!x.okx&&!x.xwc);
-      if(!it) break;
-      let r; try{r=await lrFind(it,0);}catch(e){xwWait=Date.now()+60000; break;}
+      if(failed||!xwOn()||S.xwLy===false) return;
+      const it=S.items.find(x=>x.type==='song'&&!x.bad&&!x.okx&&!x.xwc&&!xwClaim.has(x.id));
+      if(!it) return;
+      xwClaim.add(it.id);
+      let r; try{r=await lrFind(it,0);}catch(e){xwClaim.delete(it.id); failed=true; xwWait=Date.now()+45000; setTimeout(xwScan,46000); return;}
+      xwClaim.delete(it.id);
       if(!S.items.includes(it)) continue;
       it.xwc=1; delete it.vet;
       const c=(r&&r.xw)||[];
       if(c.join()!==(it.xwL||[]).join()){if(c.length) it.xwL=c; else delete it.xwL; ch=true;}
-      if(++n%10===0) save();
-      await new Promise(z=>setTimeout(z,350));
+      if(++n%25===0){save(); xwSweep(); resetQ(); render();}
+      await new Promise(z=>setTimeout(z,150));
     }
-  }finally{xwBusy=false;}
-  save();
+  };
+  try{await Promise.all([work(),work(),work()]);}finally{xwBusy=false;}
+  save(); resetQ(); render();
   if(ch){xwSweep(); renderParent();}
 }
+setInterval(xwScan,30000);
 function xwBlockNow(it){
   $('now').textContent='“'+it.name+'” is held back because of its lyrics. Skipping…';
   try{player.pauseVideo();}catch(e){}

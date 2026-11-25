@@ -543,6 +543,18 @@ hr{border-top-color:#f0d9b5}
   <p id="enrMsg" class="msg"></p>
   <div class="row"><button id="chk" class="btn alt">Check songs now</button><button id="subAll" class="btn alt">Find replacements</button><button id="syncNow" class="btn alt">Refresh playlists</button></div>
   <p class="msg">Songs that can’t play are hidden from the kids automatically. Checking and finding replacements needs the YouTube key.</p>
+  <details id="howChk"><summary>How song checking works</summary>
+    <ol class="how">
+      <li>Songs stay <b>hidden from the kids until they pass every check</b>. This covers new songs from a playlist refresh, a pasted link, or a song you approve. In the library they show as “being checked”.</li>
+      <li>The checks: it can play inside apps, it isn’t age-restricted or marked explicit, it isn’t blocked in your country, and the title and lyrics have no swearing, sexual, violent or blasphemy words. The first three need the YouTube key.</li>
+      <li>Lyrics are looked up a few songs at a time while the app is open, so a big playlist can take a while to appear.</li>
+      <li>A song that fails goes to <b>Held back</b> (tap Allow if you’re happy with it) or is removed if it can’t play.</li>
+      <li>Songs you approve from the kids’ requests skip the word and explicit checks, because you decided. They still need to be able to play in apps.</li>
+      <li>Rarely a song only fails when played. That one is removed the first time it errors.</li>
+    </ol>
+    <label for="ccIn">Your country code (for songs blocked where you live), for example AU:</label>
+    <input id="ccIn" maxlength="2" autocomplete="off" placeholder="AU">
+  </details>
   <div class="row"><button id="parX" class="btn alt">Close</button></div>
 </dialog>
 
@@ -618,7 +630,7 @@ function artistOf(x){
   return m?cleanArt(m[1]):cleanArt(x.by);
 }
 const inView=x=>qs?(x.type==='song'&&nameHas(x)):view==='all'||view==='home'||view==='q'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view.startsWith('a:')?(artistOf(x)||'Other').toLowerCase()===view.slice(2).toLowerCase():view.startsWith('b:')?(x.alb||'').toLowerCase()===view.slice(2).toLowerCase():view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
-const vetting=x=>!!x.vet&&x.type==='song'&&!x.okx&&!(x.chk&&(S.xwOn===false||S.xwLy===false||x.xwc));
+const vetting=x=>x.type==='song'&&!x.bad&&!x.xw&&(!x.chk||(!!x.vet&&!x.okx&&S.xwOn!==false&&S.xwLy!==false&&!x.xwc));
 const hid=x=>!!(x.bad||x.xw||vetting(x));
 const ok=i=>{const x=S.items[i]; return !!x&&!hid(x)&&inView(x);};
 const vis=()=>{
@@ -1181,7 +1193,7 @@ async function checkEmbeds(quiet,onlyNew){
         const v=st.get(x.id), z=v&&v.status; if(x.bad) return;
         const sn=v?((v.snippet.title||'')+' '+(v.snippet.description||'').slice(0,400)):'';
         const ex=!x.appr&&v&&!/\bclean\b/i.test(v.snippet.title||'')&&(/\b(explicit|uncensored|dirty)\b/i.test(sn)||((v.contentDetails||{}).contentRating||{}).ytRating==='ytAgeRestricted');
-        if(!z||z.embeddable===false){x.bad=true; x.why='blocked'; bad++;} else if(ex){x.bad=true; x.why='explicit'; bad++;} else x.chk=1;
+        if(!z||z.embeddable===false||geo(v)){x.bad=true; x.why='blocked'; bad++;} else if(ex){x.bad=true; x.why='explicit'; bad++;} else x.chk=1;
       });
     }
     S.lastCheck=today(); save(); resetQ(); render(); renderParent();
@@ -1710,7 +1722,7 @@ async function xwScan(){
       if(!it) break;
       let r; try{r=await lrFind(it,0);}catch(e){xwWait=Date.now()+60000; break;}
       if(!S.items.includes(it)) continue;
-      it.xwc=1;
+      it.xwc=1; delete it.vet;
       const c=(r&&r.xw)||[];
       if(c.join()!==(it.xwL||[]).join()){if(c.length) it.xwL=c; else delete it.xwL; ch=true;}
       if(++n%10===0) save();
@@ -2210,6 +2222,10 @@ $('ytNow').onclick=async()=>{
   catch(e){m.textContent='Couldn’t finish: '+e.message;}
   renderParent();
 };
+const geo=v=>{const rr=(v.contentDetails||{}).regionRestriction, c=(S.cc||(navigator.language||'').split('-')[1]||'').toUpperCase(); return !!(rr&&c&&((rr.blocked||[]).includes(c)||(rr.allowed&&!rr.allowed.includes(c))));};
+if(!S.vetm){S.items.forEach(x=>{if(x.type==='song'&&!x.xwc&&!x.okx&&!x.bad) x.vet=1;}); S.vetm=1; save();}
+$('ccIn').value=S.cc||'';
+$('ccIn').onchange=()=>{S.cc=$('ccIn').value.trim().toUpperCase().slice(0,2); save(); checkEmbeds(true,false);};
 paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy(); xwInit();
 const SYNC_GAP=60000;
 const maybeSync=()=>{ if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>SYNC_GAP) syncAll(true); };
@@ -2217,7 +2233,7 @@ if(S.apiKey&&S.src.length) syncAll(true);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) maybeSync(); });
 setInterval(maybeSync,1800000);
 if(autoOn()) purgeBad();
-checkEmbeds(true,!S.apiKey||S.lastCheck===today());
+checkEmbeds(true,(!S.apiKey||S.lastCheck===today())&&S.chkv===2).then(()=>{if(S.lastCheck===today()){S.chkv=2; save();}});
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
   navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(r=>r.update()).catch(()=>{});
   navigator.serviceWorker.addEventListener('controllerchange',()=>{

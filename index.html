@@ -2232,7 +2232,7 @@ $('ytNow').onclick=async()=>{
   if(!(S.ytDel||[]).length){m.textContent='Nothing is waiting.'; return;}
   m.textContent='Signing in…';
   try{const n=await ytFlush(); m.textContent='Removed '+n+' song'+(n===1?'':'s')+' from the YouTube playlist.';}
-  catch(e){m.textContent='Couldn’t finish: '+e.message;}
+  catch(e){const t=String(e.message||e).replace(/<[^>]*>/g,''); m.textContent=/quota/i.test(t)?'YouTube’s daily limit for your key is used up. The '+(S.ytDel||[]).length+' songs still waiting are saved. Press this again after it resets (midnight Pacific time).':'Couldn’t finish: '+t;}
   renderParent();
 };
 const geo=v=>{const rr=(v.contentDetails||{}).regionRestriction, c=(S.cc||(navigator.language||'').split('-')[1]||'').toUpperCase(); return !!(rr&&c&&((rr.blocked||[]).includes(c)||(rr.allowed&&!rr.allowed.includes(c))));};

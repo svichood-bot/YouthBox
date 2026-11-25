@@ -114,6 +114,7 @@ summary{cursor:pointer;font-weight:600}
 .pk.sel img{box-shadow:0 0 0 4px var(--acc)}
 .pk.sel::after{content:'✓';position:absolute;top:4px;right:4px;background:var(--acc);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;font-weight:700}
 dialog{margin:12px auto auto;max-height:calc(var(--vh,100dvh) - 24px);overflow-y:auto}
+#krL{list-style:none;margin:8px 0 14px;padding:0;max-height:200px;overflow:auto}#krL li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:6px 0;border-bottom:1px dashed var(--line);font-size:.95rem}
 #tools:empty{display:none}
 .tools{margin:-6px 0 14px}
 .tools select{font:inherit;padding:6px 10px;border:2px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
@@ -331,6 +332,7 @@ hr{border-top-color:#f0d9b5}
   <div id="seekRow">
     <div class="sk"><span id="tEl">0:00</span><input id="seek" type="range" min="0" max="1000" value="0" aria-label="Song position"><span id="tDur">0:00</span></div>
     <div class="skb"><button id="skBack" class="chip" aria-label="Back 10 seconds">⏪ 10s</button><button id="rep" class="chip">🔁 Repeat all</button><button id="skFwd" class="chip" aria-label="Forward 10 seconds">10s ⏩</button></div>
+    <div class="skb"><button id="kidRm" class="chip">🗑 Remove this song</button></div>
   </div>
 </div>
 <div id="qwrap" aria-hidden="true">
@@ -466,6 +468,13 @@ hr{border-top-color:#f0d9b5}
     <div class="row"><button id="saveKey" class="btn alt">Save key</button><button id="copyKey" class="btn alt" hidden>Copy key</button></div>
     <p id="keyMsg" class="msg"></p>
   </details>
+  <details id="ytBox"><summary>Also remove rejected songs from the YouTube playlist (optional)</summary>
+    <p>YouTube only lets an app change a playlist when you sign in. Once: in the same Google Cloud project open <b>APIs &amp; Services → Credentials → Create credentials → OAuth client ID</b>, pick <b>Web application</b>, add your YouthBox address under <b>Authorised JavaScript origins</b>, and add your Google account as a test user on the consent screen. Paste the Client ID here.</p>
+    <input id="gcid" autocomplete="off" placeholder="Paste Client ID here" aria-label="Google OAuth client ID">
+    <div class="row"><button id="saveGcid" class="btn alt">Save</button><button id="ytNow" class="btn alt">Remove waiting songs from YouTube</button></div>
+    <p id="ytMsg" class="msg"></p>
+  </details>
+  <div id="krBox" hidden><h2>Removed by the kids</h2><ul id="krL"></ul></div>
   <hr>
   <h2>Kids’ lists</h2>
   <ul id="kpl"></ul>
@@ -609,7 +618,8 @@ function artistOf(x){
   return m?cleanArt(m[1]):cleanArt(x.by);
 }
 const inView=x=>qs?(x.type==='song'&&nameHas(x)):view==='all'||view==='home'||view==='q'||(view.startsWith('g:')?(x.group||'Songs')===view.slice(2):view.startsWith('a:')?(artistOf(x)||'Other').toLowerCase()===view.slice(2).toLowerCase():view.startsWith('b:')?(x.alb||'').toLowerCase()===view.slice(2).toLowerCase():view==='fav'?S.favs.includes(x.id):((S.kp.find(p=>p.id===view)||{songs:[]}).songs.includes(x.id)));
-const hid=x=>!!(x.bad||x.xw);
+const vetting=x=>!!x.vet&&x.type==='song'&&!x.okx&&!(x.chk&&(S.xwOn===false||S.xwLy===false||x.xwc));
+const hid=x=>!!(x.bad||x.xw||vetting(x));
 const ok=i=>{const x=S.items[i]; return !!x&&!hid(x)&&inView(x);};
 const vis=()=>{
   const r=S.items.map((x,i)=>i).filter(ok), sv=S.sort||'added', kl=S.kp.find(p=>p.id===view);
@@ -1051,7 +1061,7 @@ async function addSongs(items,l,label){
   const group=label||(await ytTitle('https://www.youtube.com/playlist?list='+l))||'Playlist';
   let n=0;
   for(let i=0;i<fresh.length;i+=6){
-    const res=await Promise.all(fresh.slice(i,i+6).map(async x=>{const mt=(x.name&&x.by)?{title:'',by:''}:await ytMeta(vurl(x.id)); return {type:'song',id:x.id,name:x.name||mt.title||'Song',by:x.by||mt.by||'',group,src:l};}));
+    const res=await Promise.all(fresh.slice(i,i+6).map(async x=>{const mt=(x.name&&x.by)?{title:'',by:''}:await ytMeta(vurl(x.id)); return {type:'song',id:x.id,name:x.name||mt.title||'Song',by:x.by||mt.by||'',group,src:l,vet:1};}));
     S.items.push(...res); n+=res.length;
     m.textContent='Importing… '+n+' of '+fresh.length;
   }
@@ -1074,7 +1084,7 @@ $('add').onclick=async()=>{
   if(S.items.some(x=>x.id===p.id)){m.textContent='That song is already in the library.'; return;}
   m.textContent='Looking up the name…';
   const mt=await ytMeta(vurl(p.id)), title=name||mt.title||'Song';
-  S.items.push({type:'song',id:p.id,name:title,by:mt.by}); save(); resetQ();
+  S.items.push({type:'song',id:p.id,name:title,by:mt.by,vet:1}); save(); resetQ();
   $('url').value=''; $('nm').value=''; m.textContent='Added “'+title+'”. Checking it plays…';
   render(); renderParent();
   const nb=await checkEmbeds(true,true), mine=S.items.find(x=>x.id===p.id);
@@ -1170,7 +1180,7 @@ async function checkEmbeds(quiet,onlyNew){
       ch.forEach(x=>{
         const v=st.get(x.id), z=v&&v.status; if(x.bad) return;
         const sn=v?((v.snippet.title||'')+' '+(v.snippet.description||'').slice(0,400)):'';
-        const ex=v&&!/\bclean\b/i.test(v.snippet.title||'')&&(/\b(explicit|uncensored|dirty)\b/i.test(sn)||((v.contentDetails||{}).contentRating||{}).ytRating==='ytAgeRestricted');
+        const ex=!x.appr&&v&&!/\bclean\b/i.test(v.snippet.title||'')&&(/\b(explicit|uncensored|dirty)\b/i.test(sn)||((v.contentDetails||{}).contentRating||{}).ytRating==='ytAgeRestricted');
         if(!z||z.embeddable===false){x.bad=true; x.why='blocked'; bad++;} else if(ex){x.bad=true; x.why='explicit'; bad++;} else x.chk=1;
       });
     }
@@ -1322,7 +1332,7 @@ async function syncAllRun(quiet){
     try{
       const items=await apiItems(o.id); if(!items.length) continue;
       const ids=new Set(items.map(x=>x.id)), have=new Set(S.items.map(x=>x.id));
-      items.filter(x=>!have.has(x.id)&&!(S.dead||[]).includes(x.id)).forEach(x=>{S.items.push({type:'song',id:x.id,name:x.name,by:x.by,group:o.name,src:o.id}); add++;});
+      items.filter(x=>!have.has(x.id)&&!(S.dead||[]).includes(x.id)).forEach(x=>{S.items.push({type:'song',id:x.id,name:x.name,by:x.by,group:o.name,src:o.id,vet:1}); add++;});
       const n=S.items.length; S.items=S.items.filter(x=>!(x.src===o.id&&!ids.has(x.id))); rem+=n-S.items.length;
     }catch(e){if(!quiet) $('addMsg').textContent='Refresh problem: '+e.message;}
   }
@@ -1731,7 +1741,7 @@ function xwAllow(it){it.okx=true; delete it.xw; delete it.xwT; save(); resetQ();
 function xwReblock(it){delete it.okx; delete it.xwc; save(); xwSweep(); renderParent(); setTimeout(xwScan,500);}
 function rmItem(it){
   const i=S.items.indexOf(it); if(i<0) return;
-  bury(it.id); S.items.splice(i,1); save(); resetQ();
+  bury(it.id); qYt(it); S.items.splice(i,1); save(); resetQ();
   if(i===cur){cur=-1; if(pReady) player.stopVideo(); resetBar();}
   else if(i<cur) cur--;
   render(); renderParent();
@@ -1786,7 +1796,7 @@ function libIdx(){
 }
 function renderLib(){
   const held=S.items.filter(x=>x.xw).length;
-  $('libSum').textContent='In the library ('+S.items.length+')'+(held?' · '+held+' held back':'');
+  $('libSum').textContent='In the library ('+S.items.length+')'+(held?' · '+held+' held back':'')+(S.items.some(vetting)?' · '+S.items.filter(vetting).length+' being checked':'');
   const ul=$('plist'); ul.textContent='';
   if(!$('libBox').open) return;
   const idx=libIdx(), f=$('libF').value, q=$('libQ').value.trim(), filt=(f!=='all'||!!q);
@@ -1797,6 +1807,7 @@ function renderLib(){
     t.textContent=(it.type==='list'?'Playlist: ':'')+it.name;
     const info=[];
     if(it.type==='song'){const a=artistOf(it); if(a) info.push(a); if(it.group) info.push(it.group);}
+    if(vetting(it)) info.push('being checked');
     if(it.bad) info.push('won’t play here');
     if(it.xw) info.push('held back: '+xwNames(it.xw));
     if(it.okx) info.push('allowed by you');
@@ -1831,7 +1842,7 @@ function xwInit(){
     const idx=libIdx(); if(!idx.length) return;
     if(!confirm('Remove '+idx.length+' item'+(idx.length===1?'':'s')+' from the library? They won’t come back when playlists refresh.')) return;
     const set=new Set(idx.map(i=>S.items[i])), here=cur>=0?S.items[cur]:null;
-    set.forEach(x=>bury(x.id));
+    set.forEach(x=>{bury(x.id); qYt(x);});
     S.items=S.items.filter(x=>!set.has(x));
     if(here&&!set.has(here)) cur=S.items.indexOf(here); else {cur=-1; if(pReady) try{player.stopVideo();}catch(e){} resetBar();}
     save(); resetQ(); render(); renderParent();
@@ -2125,11 +2136,84 @@ function lockUp(){
 document.addEventListener('visibilitychange',()=>{if(document.hidden) lockUp();});
 addEventListener('pagehide',lockUp);
 $('bkUp').addEventListener('click',()=>{skipLock=Date.now()+180000;});
-{const _d=decide; decide=function(v,y){_d(v,y); if(y) checkEmbeds(true,true);};}
+{const _d=decide; decide=function(v,y){
+  if(y) S.dead=(S.dead||[]).filter(x=>x!==v);
+  _d(v,y);
+  if(y){
+    const it=S.items.find(x=>x.id===v);
+    if(it){it.okx=true; it.appr=1; delete it.xw; delete it.xwT; save();}
+    checkEmbeds(true,true).then(()=>{if(!S.items.some(x=>x.id===v)) toast('That song can’t play in apps, so it couldn’t be added.');});
+  }
+};}
+/* ---------- kids can remove songs; removed songs leave the YouTube playlist too ---------- */
+let ytTok=null, ytTokExp=0;
+function qYt(it){
+  if(!it||!it.src) return;
+  S.ytDel=S.ytDel||[];
+  if(!S.ytDel.some(d=>d.vid===it.id&&d.pl===it.src)) S.ytDel.push({pl:it.src,vid:it.id});
+  save();
+  if(ytTok&&Date.now()<ytTokExp) ytFlush().then(()=>renderParent()).catch(()=>{});
+}
+function ytAuth(){
+  return new Promise((res,rej)=>{
+    if(ytTok&&Date.now()<ytTokExp) return res(ytTok);
+    if(!S.gcid) return rej(new Error('paste your Client ID first'));
+    const go=()=>google.accounts.oauth2.initTokenClient({client_id:S.gcid,scope:'https://www.googleapis.com/auth/youtube',
+      callback:r=>{if(r.error) return rej(new Error(r.error)); ytTok=r.access_token; ytTokExp=Date.now()+(r.expires_in-60)*1000; res(ytTok);},
+      error_callback:e=>rej(new Error((e&&e.type)||'sign-in cancelled'))}).requestAccessToken({prompt:''});
+    if(window.google&&google.accounts&&google.accounts.oauth2) return go();
+    const s=document.createElement('script'); s.src='https://accounts.google.com/gsi/client'; s.onload=go;
+    s.onerror=()=>rej(new Error('couldn’t load Google sign-in')); document.head.append(s);
+  });
+}
+async function ytFlush(){
+  if(!(S.ytDel||[]).length) return 0;
+  const H={Authorization:'Bearer '+await ytAuth()}, api='https://www.googleapis.com/youtube/v3/playlistItems';
+  let n=0;
+  for(const d of S.ytDel.slice()){
+    const r=await fetch(api+'?part=id&maxResults=50&playlistId='+encodeURIComponent(d.pl)+'&videoId='+encodeURIComponent(d.vid),{headers:H}), j=await r.json();
+    if(!r.ok) throw new Error((j.error&&j.error.message)||('error '+r.status));
+    for(const p of (j.items||[])){
+      const x=await fetch(api+'?id='+encodeURIComponent(p.id),{method:'DELETE',headers:H});
+      if(!x.ok&&x.status!==404){let e={}; try{e=await x.json();}catch(_){} throw new Error((e.error&&e.error.message)||('error '+x.status));}
+    }
+    S.ytDel=S.ytDel.filter(z=>!(z.pl===d.pl&&z.vid===d.vid)); n++; save();
+  }
+  return n;
+}
+$('kidRm').onclick=()=>{
+  const it=S.items[cur]; if(!it||it.type!=='song'){toast('Pick a song first 🎵'); return;}
+  if(!confirm('Remove “'+it.name+'” for good? A grown-up can bring it back.')) return;
+  S.kidRm=[...(S.kidRm||[]),Object.assign({},it,{rt:Date.now()})].slice(-50);
+  closeSheet(); rmItem(it); toast('Removed “'+it.name+'”');
+};
+function kidRestore(r){
+  const it=Object.assign({},r); delete it.rt; delete it.src; delete it.bad;
+  S.kidRm=S.kidRm.filter(x=>x!==r); S.dead=(S.dead||[]).filter(x=>x!==it.id); S.ytDel=(S.ytDel||[]).filter(d=>d.vid!==it.id);
+  if(!S.items.some(x=>x.id===it.id)) S.items.push(it);
+  save(); resetQ(); render(); renderParent();
+}
+function renderKr(){
+  const a=S.kidRm||[], ul=$('krL'); ul.textContent=''; $('krBox').hidden=!a.length;
+  a.slice().reverse().forEach(r=>{const li=document.createElement('li'), t=document.createElement('span'); t.textContent=r.name; li.append(t,mk('Bring back',()=>kidRestore(r),'sm')); ul.append(li);});
+  const n=(S.ytDel||[]).length; $('ytNow').textContent=n?'Remove '+n+' waiting from YouTube':'Remove waiting songs from YouTube';
+  if(document.activeElement!==$('gcid')) $('gcid').value=S.gcid||'';
+}
+{const _rp=renderParent; renderParent=function(){_rp(); renderKr();};}
+$('saveGcid').onclick=()=>{S.gcid=$('gcid').value.trim(); ytTok=null; save(); $('ytMsg').textContent=S.gcid?'Saved. Tap the button next to it to sign in and clear the waiting list.':'Client ID removed.';};
+$('ytNow').onclick=async()=>{
+  const m=$('ytMsg');
+  if(!S.gcid){m.textContent='Paste and save your Client ID first.'; return;}
+  if(!(S.ytDel||[]).length){m.textContent='Nothing is waiting.'; return;}
+  m.textContent='Signing in…';
+  try{const n=await ytFlush(); m.textContent='Removed '+n+' song'+(n===1?'':'s')+' from the YouTube playlist.';}
+  catch(e){m.textContent='Couldn’t finish: '+e.message;}
+  renderParent();
+};
 paintVid(); paintShuf(); render(); setIcon(false); $('showLy').checked=S.lyrics!==false; paintTabs(); paintLyr(); backfillBy(); xwInit();
-const SYNC_GAP=600000;
+const SYNC_GAP=60000;
 const maybeSync=()=>{ if(S.apiKey&&S.src.length&&Date.now()-S.lastSync>SYNC_GAP) syncAll(true); };
-maybeSync();
+if(S.apiKey&&S.src.length) syncAll(true);
 document.addEventListener('visibilitychange',()=>{ if(!document.hidden) maybeSync(); });
 setInterval(maybeSync,1800000);
 if(autoOn()) purgeBad();
